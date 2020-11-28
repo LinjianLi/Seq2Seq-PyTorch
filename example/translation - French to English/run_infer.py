@@ -1,8 +1,9 @@
-import torch
 import os
 import json
 import argparse
 import random
+
+import torch
 
 from seq2seq.vocab import Vocab
 from seq2seq.seq2seq import Seq2Seq
@@ -79,6 +80,7 @@ model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 rnn_cell=config["rnn_cell"],
                 teacher_forcing_ratio=config["teacher_forcing_ratio"],
                 use_gpu=use_gpu)
+
 if args.checkpoint is not None:
     logger.info('Loading model state dictionaries...')
     model.load_state_dict(model_sd)

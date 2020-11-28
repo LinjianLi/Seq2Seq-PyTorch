@@ -1,8 +1,8 @@
 import os
 import json
-import re
 import argparse
 import random
+import re
 
 import torch
 from torch import optim
@@ -27,7 +27,8 @@ logger.addHandler(file_handler)
 
 use_gpu = torch.cuda.is_available()
 device = torch.device("cuda" if use_gpu else "cpu")
-with open("./config.json") as f:
+config_file = "./config.json"
+with open(config_file) as f:
     config = json.load(f)
 
 logger.info("Use GPU: {}.".format(use_gpu))
@@ -82,10 +83,10 @@ if not os.path.exists(vocab_file_eng):
             vocab_eng.add_sentence(line[0], to_lower=True, remove_punc=True)
     logger.info(vocab_eng)
     logger.info('Storing vocab...')
-    vocab_eng.to_json("vocab_eng.json")
+    vocab_eng.to_json(vocab_file_eng)
 else:
-    vocab_eng = Vocab("eng")
     logger.info('Loading vocab...')
+    vocab_eng = Vocab("eng")
     vocab_eng.from_json(vocab_file_eng)
 
 vocab_file_fra = "vocab_fra.json"
@@ -101,10 +102,10 @@ if not os.path.exists(vocab_file_fra):
             vocab_fra.add_sentence(line[1], to_lower=True, remove_punc=True)
     logger.info(vocab_fra)
     logger.info('Storing vocab...')
-    vocab_fra.to_json("vocab_fra.json")
+    vocab_fra.to_json(vocab_file_fra)
 else:
-    vocab_fra = Vocab("fra")
     logger.info('Loading vocab...')
+    vocab_fra = Vocab("fra")
     vocab_fra.from_json(vocab_file_fra)
 
 def prepare_data(data_path, vocab_eng, vocab_fra):
@@ -144,7 +145,7 @@ val_data_batches = val_data.create_batches(batch_size=config["eval_batch_size"],
 
 # Load model if a args.checkpoint is provided
 if args.checkpoint is not None:
-    logger.info('Loading checkpoint file...')
+    logger.info('Loading checkpoint file [{}]...'.format(args.checkpoint))
     # If loading on same machine the model was trained on
     checkpoint = torch.load(args.checkpoint)
     # If loading a model trained on GPU to CPU
@@ -168,6 +169,7 @@ model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 rnn_cell=config["rnn_cell"],
                 teacher_forcing_ratio=config["teacher_forcing_ratio"],
                 use_gpu=use_gpu)
+
 if args.checkpoint is not None:
     logger.info('Loading model state dictionaries...')
     model.load_state_dict(model_sd)
@@ -184,6 +186,7 @@ elif config["optimizer"].lower() == "sgd":
     model_optimizer = optim.SGD(model.parameters(), lr=config["learning_rate"])
 else:
     model_optimizer = optim.SGD(model.parameters(), lr=config["learning_rate"])
+
 if args.checkpoint is not None:
     logger.info('Loading model optimizer state dictionaries...')
     model_optimizer.load_state_dict(model_optimizer_sd)
@@ -209,7 +212,6 @@ trainer = Trainer(model=model,
 # Run training iterations
 logger.info("Starting Training!")
 trainer.run(grad_clip=config["grad_clip"], progress_indicator=config["progress_indicator"])
-
 
 for data in random.choices(val_data, k=20):
     input, target = data["input"], data["target"]
