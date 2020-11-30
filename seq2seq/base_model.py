@@ -9,6 +9,7 @@
 import os
 import torch
 import torch.nn as nn
+from prettytable import PrettyTable
 
 
 class BaseModel(nn.Module):
@@ -25,9 +26,21 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def __repr__(self):
-        main_string = super(BaseModel, self).__repr__()
-        num_parameters = sum([p.nelement() for p in self.parameters()])
-        main_string += "\nNumber of parameters: {}\n".format(num_parameters)
+
+        # main_string = super(BaseModel, self).__repr__()
+        # num_parameters = sum([p.nelement() for p in self.parameters()])
+        # main_string += "\nNumber of parameters: {}\n".format(num_parameters)
+        # return main_string
+
+        table = PrettyTable(["Modules", "Parameters"])
+        total_params = 0
+        for name, parameter in self.named_parameters():
+            if not parameter.requires_grad: continue
+            num_param = parameter.numel()
+            table.add_row([name, num_param])
+            total_params += num_param
+        main_string = '\n' + super(BaseModel, self).__repr__() + '\n'
+        main_string += table.get_string() + '\n' + "Total Trainable Params: {}".format(total_params)
         return main_string
 
     def save(self, filename):

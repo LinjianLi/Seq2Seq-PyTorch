@@ -1,5 +1,6 @@
 torch
 tqdm
 progress-text
+prettytable
 matplotlib
 scikit-learn
