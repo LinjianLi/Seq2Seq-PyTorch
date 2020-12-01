@@ -20,18 +20,20 @@ logger.addHandler(file_handler)
 
 class Trainer(object):
     """docstring for Trainer"""
-    def __init__(self, 
+    def __init__(self,
                  model,
                  loss_fn,
                  optimizer,
                  train_dataloder,
                  valid_dataloder=None,
+                 scheduler=None,
                  num_epoches=1,
                  start_epoch=0,
                  early_stop_num=10,
                  save_path=None,
                  save_every_epoch=5,
-                 plot_loss_group_by="epoch"):
+                 plot_loss_group_by="epoch",
+                 use_gpu=False):
         super(Trainer, self).__init__()
         self.model = model
         self.loss_fn = loss_fn 
@@ -45,6 +47,7 @@ class Trainer(object):
             logger.warning("Validation data loder is not provided! Using train data loder instead.")
             self.valid_dataloder = train_dataloder
 
+        self.scheduler = scheduler
         self.early_stop_num = early_stop_num
         self.save_path = save_path
         self.save_every_epoch = save_every_epoch
@@ -55,6 +58,10 @@ class Trainer(object):
                                 .format(self.plot_loss_group_by))
             self.plot_loss_group_by = "epoch"
 
+        self.use_gpu = use_gpu
+        if self.use_gpu and not torch.cuda.is_available():
+            raise ImportError("(self.use_gpu == True) but (torch.cuda.is_available() == False)")
+
         self.now_epoch = -1
 
         self.train_loss_record = []
@@ -63,7 +70,6 @@ class Trainer(object):
                             'train_loss': float('inf'),
                             'valid_loss': float('inf'),
                             'model': None}
-        # if there is no better record in early_stop_num round , stop the training process
 
     def run(self, grad_clip=5.0, progress_indicator="progress-text"):
         for self.now_epoch in range(self.start_epoch, self.num_epoches+1):
@@ -71,6 +77,9 @@ class Trainer(object):
 
             train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, progress_indicator=progress_indicator)
             valid_loss_avg, valid_losses = self.eval(progress_indicator=progress_indicator)
+
+            if self.scheduler is not None:
+                self.scheduler.step()
 
             logger.info('Trian loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
 
@@ -132,7 +141,10 @@ class Trainer(object):
                                 'epoch_{}.pt'.format(self.now_epoch))
             save_dict = {'model':self.model.state_dict(),
                          'optimizer':self.optimizer.state_dict(),
-                         'epoch':self.now_epoch}
+                         'scheduler':self.scheduler.state_dict() if self.scheduler is not None else None,
+                         'epoch':self.now_epoch,
+                         'train_loss_record': self.train_loss_record,
+                         'valid_loss_record': self.valid_loss_record}
             torch.save(save_dict, joint_save_path)
 
     def save_loss_record(self):
@@ -146,6 +158,24 @@ class Trainer(object):
                          'valid_loss': self.valid_loss_record}
             with open(joint_save_path, mode="w") as f:
                 json.dump(save_dict, f)
+
+    def load(self, filename):
+        if not os.path.exists(filename):
+            raise ValueError
+        logger.info('Loading checkpoint file [{}]...'.format(filename))
+        checkpoint = torch.load(filename)
+        logger.info('Loading model state dictionaries...')
+        self.model.load_state_dict(checkpoint['model'])
+        if self.use_gpu:
+            self.model.to(torch.device("cuda"))
+        logger.info('Loading model optimizer state dictionaries...')
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+        if self.scheduler is not None:
+            self.scheduler.load_state_dict(checkpoint['scheduler'])
+        self.now_epoch = checkpoint['epoch']
+        self.train_loss_record = checkpoint['train_loss_record']
+        self.valid_loss_record = checkpoint['valid_loss_record']
+
 
     def eval(self, progress_indicator="progress-text"):
         losses = []
