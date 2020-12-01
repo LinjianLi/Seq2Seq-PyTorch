@@ -143,15 +143,6 @@ train_data_batches = train_data.create_batches(batch_size=config["train_batch_si
 val_data = Dataset(val_data)
 val_data_batches = val_data.create_batches(batch_size=config["eval_batch_size"], shuffle=False, device=device)
 
-# Load model if a args.checkpoint is provided
-if args.checkpoint is not None:
-    logger.info('Loading checkpoint file [{}]...'.format(args.checkpoint))
-    # If loading on same machine the model was trained on
-    checkpoint = torch.load(args.checkpoint)
-    # If loading a model trained on GPU to CPU
-    model_sd = checkpoint['model']
-    model_optimizer_sd = checkpoint['optimizer']
-
 logger.info('Building model...')
 model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 tgt_vocab_size=len(vocab_eng),
@@ -170,11 +161,6 @@ model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 teacher_forcing_ratio=config["teacher_forcing_ratio"],
                 use_gpu=use_gpu)
 
-if args.checkpoint is not None:
-    logger.info('Loading model state dictionaries...')
-    model.load_state_dict(model_sd)
-model.to(device)
-
 logger.info(model)
 logger.info('Models built and ready to go!')
 
@@ -187,20 +173,20 @@ elif config["optimizer"].lower() == "sgd":
 else:
     model_optimizer = optim.SGD(model.parameters(), lr=config["learning_rate"])
 
-if args.checkpoint is not None:
-    logger.info('Loading model optimizer state dictionaries...')
-    model_optimizer.load_state_dict(model_optimizer_sd)
-
-for state in model_optimizer.state.values():
-    for k, v in state.items():
-        if isinstance(v, torch.Tensor) and torch.cuda.is_available():
-            state[k] = v.cuda()
+if config["scheduler"].lower() == "steplr":
+    optimizer_scheduler = optim.lr_scheduler.StepLR(optimizer=model_optimizer,
+                                                    step_size=config["scheduler_step_size"],
+                                                    gamma=config["scheduler_gamma"],
+                                                    last_epoch=-1)
+else:
+    optimizer_scheduler = None
 
 save_dir = config["save_dir"]
 
 trainer = Trainer(model=model,
                   loss_fn=NLLLoss(ignore_index=config["PAD_token"], reduction='mean'),
                   optimizer=model_optimizer,
+                  scheduler=optimizer_scheduler,
                   num_epoches=config["num_epoches"],
                   start_epoch=config["start_epoch"],
                   train_dataloder=train_data_batches,
@@ -208,6 +194,9 @@ trainer = Trainer(model=model,
                   early_stop_num=config["early_stop_num"],
                   save_path=config["save_dir"],
                   save_every_epoch=config["save_every_epoch"])
+
+if args.checkpoint is not None:
+    trainer.load(args.checkpoint)
 
 # Run training iterations
 logger.info("Starting Training!")
