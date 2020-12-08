@@ -81,7 +81,7 @@ class Trainer(object):
             if self.scheduler is not None:
                 self.scheduler.step()
 
-            logger.info('Trian loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
+            logger.info('Train loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
 
             self.train_loss_record += [train_loss_avg] if self.plot_loss_group_by == "epoch" else train_losses
             self.valid_loss_record += [valid_loss_avg] if self.plot_loss_group_by == "epoch" else valid_losses
