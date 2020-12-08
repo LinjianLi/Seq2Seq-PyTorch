@@ -36,7 +36,7 @@ class Trainer(object):
                  use_gpu=False):
         super(Trainer, self).__init__()
         self.model = model
-        self.loss_fn = loss_fn 
+        self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.num_epoches = num_epoches
         self.start_epoch = start_epoch
@@ -85,7 +85,7 @@ class Trainer(object):
 
             self.train_loss_record += [train_loss_avg] if self.plot_loss_group_by == "epoch" else train_losses
             self.valid_loss_record += [valid_loss_avg] if self.plot_loss_group_by == "epoch" else valid_losses
-            
+
             # Update the best record.
             if valid_loss_avg < self.best_record['valid_loss']:
                 self.best_record['valid_loss'] = valid_loss_avg
@@ -93,7 +93,7 @@ class Trainer(object):
                 self.best_record['model'] = self.model
 
             # If the loss has not been descending in several epochs, stop training.
-            if ((self.early_stop_num != None) 
+            if ((self.early_stop_num != None)
                 and (self.early_stop_num > 0)
                 and (self.now_epoch - self.best_record['epoch'] >= self.early_stop_num)
                 and (valid_loss_avg > self.best_record['valid_loss'])):
@@ -108,10 +108,12 @@ class Trainer(object):
             if self.save_every_epoch > 0 and self.now_epoch % self.save_every_epoch == 0:
                 self.save()
 
+            self.plot_loss() # Update loss plot after each epoch
+
         self.save_best()
         self.save_loss_record()
         self.plot_loss()
-    
+
     def plot_loss(self):
         plt.plot(self.train_loss_record, label='Train loss')
         plt.plot(self.valid_loss_record, label='Valid loss')
@@ -180,7 +182,7 @@ class Trainer(object):
     def eval(self, progress_indicator="progress-text"):
         losses = []
         self.model.eval()
-        
+
         if progress_indicator == "progress-text":
             wrapped_iterable = ProgressText(self.valid_dataloder)
         elif progress_indicator == "tqdm":
