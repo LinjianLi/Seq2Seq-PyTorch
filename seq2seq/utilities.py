@@ -32,7 +32,7 @@ def seq_mask_from_lens(lengths, max_len=None):
     The last dimension is of shape (max_len) and consisting of consecutive
     `True`s and `False`s. The number of `True`s is dicided by the number in
     the `lengths`.
-    
+
     lengths: tensor containing the lengths of sequences
     max_len: the max length of all the sequences
     """
@@ -47,7 +47,7 @@ def seq_mask_from_lens(lengths, max_len=None):
 def list2tensor(X):
     """
     Convert an irregular shape list to a regular shape tensor padded with zero.
-    Return: 
+    Return:
         tensor: regular shape tensor padded with zero
         lengths: the lengths of the original un-padded list
     Support: 1/2/3-dimensional list.

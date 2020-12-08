@@ -70,7 +70,7 @@ class Seq2Seq(BaseModel):
         enc_embedder = Embedder(num_embeddings=self.src_vocab_size,
                                 embedding_dim=self.embed_size,
                                 padding_idx=self.padding_idx)
-                                
+
 
         self.encoder = SimpleRNN(input_size=self.embed_size,
                                  hidden_size=self.hidden_size,
@@ -123,7 +123,7 @@ class Seq2Seq(BaseModel):
             self.cuda()
         else:
             logger.info("Using CPU")
-        
+
         logger.debug(self)
 
     def encode(self, inputs, hidden=None):
@@ -171,7 +171,7 @@ class Seq2Seq(BaseModel):
         dec_inputs = dec_inputs.unsqueeze(0) # shape: (1, seq_len)
         if self.use_gpu:
             dec_inputs = dec_inputs.cuda()
-                
+
         enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
         decoder_output_tokens, decoder_outputs, hidden\
             = self.decoder(inputs=dec_inputs,

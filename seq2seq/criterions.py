@@ -97,7 +97,7 @@ class NLLLoss(_Loss):
         input: (batch_size, max_len, vocab_size)
         target: (batch_size, max_len)
 
-        return: The mean loss of elements in target if applying mean reduction. 
+        return: The mean loss of elements in target if applying mean reduction.
         """
         # batch_size = input.size(0)
 
@@ -110,11 +110,11 @@ class NLLLoss(_Loss):
                          weight=self.weight,
                          ignore_index=self.ignore_index,
                          reduction='none')
-        
+
         # The original implementation of Baidu will group the loss for each batch
         # instead of each element. The disadvantage of this is that the loss will
         # have different scales for different number of elements in a batch.
-        
+
         # nll = nll.view(batch_size, -1).sum(dim=1)
 
         if reduction:

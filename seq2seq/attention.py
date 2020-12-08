@@ -43,7 +43,7 @@ class Attention(nn.Module):
         self.key_size = key_size or query_size
         self.value_size = value_size or query_size
         self.hidden_size = hidden_size or query_size
-        self.mode = "scaled-dot" if mode in ("default", None) else mode 
+        self.mode = "scaled-dot" if mode in ("default", None) else mode
         self.return_attn_only = return_attn_only
         self.project = project
         self.tanh = nn.Tanh()
@@ -80,7 +80,7 @@ class Attention(nn.Module):
         if self.return_attn_only == False and values == None:
             # I am not sure if I should use `.clone()` or not.
             values = keys#.clone()
-        
+
         logger.debug(self)
         logger.debug('query.shape: {}\n'
                     'keys.shape: {}\n'
@@ -109,7 +109,7 @@ class Attention(nn.Module):
             # (batch_size, query_length, key_length)
             attn = torch.bmm(query, keys.transpose(1, 2))
             attn /= torch.sqrt(torch.tensor(keys.size(-1), dtype=torch.float))
-        
+
         elif self.mode == "general":
             if self.key_size != keys.size(-1):
                 raise Exception("Expected key size ({}) and "
@@ -119,7 +119,7 @@ class Attention(nn.Module):
             query_linear_to_key_size = self.linear_query(query)
             # (batch_size, query_length, key_length)
             attn = torch.bmm(query_linear_to_key_size, keys.transpose(1, 2))
-        
+
         elif self.mode == "mlp":
             # (batch_size, query_length, key_length, hidden_size)
             hidden = self.linear_query(query).unsqueeze(2)\
@@ -142,11 +142,11 @@ class Attention(nn.Module):
         if mask is not None:
             # If some rows (or columns) in mask are all True, then the
             # corresponding positions in attn will be all `-inf`. After the softmax
-            # function, the corresponding positions in weights will be all `nan`. 
+            # function, the corresponding positions in weights will be all `nan`.
             # This step is to fill the positions of `nan` with zeros.
             nan_mask = (weights != weights) # It will be true that (nan != nan).
             weights.masked_fill_(nan_mask, 0)
-        
+
         if self.return_attn_only:
             return weights
         else:

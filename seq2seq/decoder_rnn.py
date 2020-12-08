@@ -29,7 +29,7 @@ class DecoderRNN(nn.Module):
                  attn_mode=None,
                  attn_hidden_size=-1,
                  use_gpu=False):
- 
+
         super(DecoderRNN, self).__init__()
 
         self.input_size = input_size
@@ -59,8 +59,8 @@ class DecoderRNN(nn.Module):
             self.rnn_cell = nn.GRU
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
-        self.rnn = self.rnn_cell(input_size=self.input_size, 
-                                hidden_size =self.hidden_size, 
+        self.rnn = self.rnn_cell(input_size=self.input_size,
+                                hidden_size =self.hidden_size,
                                 num_layers =self.num_layers,
                                 dropout=(self.dropout if self.num_layers > 1 else 0),
                                 bidirectional=False,
@@ -76,7 +76,7 @@ class DecoderRNN(nn.Module):
                                             self.hidden_size)
 
         self.out = nn.Linear(self.hidden_size, self.output_size)
-        
+
         self.use_gpu = use_gpu
         if self.use_gpu:
             logger.info("Using GPU")
@@ -132,7 +132,7 @@ class DecoderRNN(nn.Module):
         # Also, see (https://ai.stackexchange.com/questions/12068/whats-the-advantage-of-log-softmax-over-softmax).
         # Also, see (https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html)
         # "Use LogSoftmax instead (it’s faster and has better numerical properties)" said by the PyTorch website.
-        # Maybe I should use log-softmax too. 
+        # Maybe I should use log-softmax too.
         # output = F.softmax(h_tilde, dim=-1)
         log_probs = F.log_softmax(h_tilde, dim=-1)
         # Return output and final hidden state
@@ -149,7 +149,7 @@ class DecoderRNN(nn.Module):
         Input:
             inputs: token tensor of shape (batch, seq_len) or (batch, seq_len, hidden_size)
             hidden: tensor of shape (num_layers * num_directions, batch, hidden_size)
-        
+
         Output:
             decoder_output_tokens: tensor of shape (batch_size, seq_len)
                                    representing decoded tokens
@@ -166,7 +166,7 @@ class DecoderRNN(nn.Module):
         # decoder_output_tokens = inputs[:, :1] if inputs.dim() == 2 else torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
         decoder_output_tokens = torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
         decoder_outputs = torch.tensor([], device=("cuda" if self.use_gpu else "cpu"))
-        
+
         batch_dim = 0 if self.batch_first else 1
         seq_len_dim = 1 - batch_dim
 

@@ -26,17 +26,17 @@ class Vocab:
                            EOS_token: "<EOS>", UNK_token: "<UNK>"}
         self.word2count = {}
         self.num_words = 4  # Count SOS, EOS, PAD, UNK
-    
+
     def __len__(self):
         return self.num_words
-    
+
     def __repr__(self):
         return "Vocab [{}] of size {}".format(self.name, self.num_words)
 
     def add_sentences(self, sentences, to_lower=False, remove_punc=False):
         for sentence in sentences:
             self.add_sentence(sentence, to_lower, remove_punc)
-    
+
     def add_sentence(self, sentence, to_lower=False, remove_punc=False):
         assert isinstance(sentence, str)
         sentence = re.sub(r"(\s\t\n+)", r" ", sentence)
@@ -60,7 +60,7 @@ class Vocab:
     def get_index(self, word):
         # If the word is unseen, return the unknown token.
         return self.word2index.get(word, self.word2index["<UNK>"])
-    
+
     def get_word(self, index):
         return self.index2word.get(index, self.index2word[UNK_token])
 
@@ -100,7 +100,7 @@ class Vocab:
         if add_eos:
             indexes.append(self.get_index("<EOS>"))
         return indexes
-    
+
     def sentence_from_indexes(self, indexes):
         assert isinstance(indexes, (list, tuple))
         assert isinstance(indexes[0], int)
@@ -121,7 +121,7 @@ class Vocab:
     def from_json(self, filename):
         if not os.path.isfile(filename):
             raise FileNotFoundError
-        
+
         with open(filename, mode="r") as f:
             data = json.load(f)
         self.name = data["name"]

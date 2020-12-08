@@ -41,7 +41,7 @@ args = parser.parse_args()
 #----------------------------------------------------------
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 # Since there are a lot of example sentences and we want to train something quickly,
-# we’ll trim the data set to only relatively short and simple sentences. 
+# we’ll trim the data set to only relatively short and simple sentences.
 
 MAX_LENGTH = config["max_length"]
 
