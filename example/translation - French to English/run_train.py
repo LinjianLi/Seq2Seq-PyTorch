@@ -193,7 +193,10 @@ trainer = Trainer(model=model,
                   valid_dataloder=val_data_batches,
                   early_stop_num=config["early_stop_num"],
                   save_path=config["save_dir"],
-                  save_every_epoch=config["save_every_epoch"])
+                  save_every_epoch=config["save_every_epoch"],
+                  plot_loss_group_by=config["plot_loss_group_by"],
+                  plot_loss_group_by_every=config["plot_loss_group_by_every"],
+                  evaluate_before_train=config["evaluate_before_train"])
 
 if args.checkpoint is not None:
     trainer.load(args.checkpoint)
