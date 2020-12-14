@@ -33,6 +33,7 @@ class Trainer(object):
                  save_path=None,
                  save_every_epoch=5,
                  plot_loss_group_by="epoch",
+                 evaluate_before_train=True,
                  use_gpu=False):
         super(Trainer, self).__init__()
         self.model = model
@@ -58,6 +59,8 @@ class Trainer(object):
                                 .format(self.plot_loss_group_by))
             self.plot_loss_group_by = "epoch"
 
+        self.evaluate_before_train = evaluate_before_train
+
         self.use_gpu = use_gpu
         if self.use_gpu and not torch.cuda.is_available():
             raise ImportError("(self.use_gpu == True) but (torch.cuda.is_available() == False)")
@@ -72,6 +75,20 @@ class Trainer(object):
                             'model': None}
 
     def run(self, grad_clip=5.0, progress_indicator="progress-text"):
+        if self.evaluate_before_train:
+            logger.info("Evaluation before training.")
+            # Evaluate on training set.
+            valid_dataloder_backup = self.valid_dataloder
+            self.valid_dataloder = self.train_dataloder
+            train_loss_avg, train_losses = self.eval(progress_indicator=progress_indicator)
+            self.valid_dataloder = valid_dataloder_backup
+            # Evaluate on validation set.
+            valid_loss_avg, valid_losses = self.eval(progress_indicator=progress_indicator)
+            # Record loss. Only record the average over the dataset instead of each batch.
+            logger.info('Train loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
+            self.train_loss_record += [train_loss_avg]
+            self.valid_loss_record += [valid_loss_avg]
+
         for self.now_epoch in range(self.start_epoch, self.num_epoches+1):
             logger.info('Epoch {} starts.'.format(self.now_epoch))
 
