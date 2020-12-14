@@ -115,6 +115,10 @@ class Trainer(object):
         self.plot_loss()
 
     def plot_loss(self):
+        if self.save_path is not None:
+            if not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
+        plt.clf() # Clear current figures.
         plt.plot(self.train_loss_record, label='Train loss')
         plt.plot(self.valid_loss_record, label='Valid loss')
         plt.legend()
