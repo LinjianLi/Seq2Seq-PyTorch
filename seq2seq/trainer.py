@@ -18,6 +18,10 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+def avg_every_n_elems(l, n):
+    l = [sum(l[i:i+n]) / n for i in range(0, len(l), n)]
+    return l
+
 class Trainer(object):
     """docstring for Trainer"""
     def __init__(self,
@@ -33,6 +37,7 @@ class Trainer(object):
                  save_path=None,
                  save_every_epoch=5,
                  plot_loss_group_by="epoch",
+                 plot_loss_group_by_every=1,
                  evaluate_before_train=True,
                  use_gpu=False):
         super(Trainer, self).__init__()
@@ -58,6 +63,7 @@ class Trainer(object):
                            " Swich to plot_loss_group_by=\"epoch\"."\
                                 .format(self.plot_loss_group_by))
             self.plot_loss_group_by = "epoch"
+        self.plot_loss_group_by_every = plot_loss_group_by_every
 
         self.evaluate_before_train = evaluate_before_train
 
@@ -100,8 +106,11 @@ class Trainer(object):
 
             logger.info('Train loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
 
-            self.train_loss_record += [train_loss_avg] if self.plot_loss_group_by == "epoch" else train_losses
-            self.valid_loss_record += [valid_loss_avg] if self.plot_loss_group_by == "epoch" else valid_losses
+            train_losses_grouped = avg_every_n_elems(train_losses, self.plot_loss_group_by_every)
+            valid_losses_grouped = avg_every_n_elems(valid_losses, self.plot_loss_group_by_every)
+
+            self.train_loss_record += [train_loss_avg] if self.plot_loss_group_by == "epoch" else train_losses_grouped
+            self.valid_loss_record += [valid_loss_avg] if self.plot_loss_group_by == "epoch" else valid_losses_grouped
 
             # Update the best record.
             if valid_loss_avg < self.best_record['valid_loss']:
@@ -139,7 +148,7 @@ class Trainer(object):
         plt.plot(self.train_loss_record, label='Train loss')
         plt.plot(self.valid_loss_record, label='Valid loss')
         plt.legend()
-        plt.xlabel("Num {}(s)".format(self.plot_loss_group_by))
+        plt.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
         plt.ylabel("Loss")
         plt.savefig(self.save_path + 'train_val_loss_plot.svg')
 
