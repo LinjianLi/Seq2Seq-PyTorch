@@ -214,7 +214,7 @@ class Trainer(object):
         self.model.eval()
 
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.valid_dataloder)
+            wrapped_iterable = ProgressText(self.valid_dataloder, task_name="Eval Epoch")
         elif progress_indicator == "tqdm":
             wrapped_iterable = tqdm(self.valid_dataloder)
         else:
@@ -233,7 +233,7 @@ class Trainer(object):
         self.model.train()
         losses = []
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.train_dataloder)#, every_percent=1)
+            wrapped_iterable = ProgressText(self.train_dataloder, task_name="Train Epoch")#, every_percent=1)
         elif progress_indicator == "tqdm":
             wrapped_iterable = tqdm(self.train_dataloder)
         else:
