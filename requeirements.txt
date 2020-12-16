@@ -1,6 +1,7 @@
 torch
+matplotlib
+prettytable
+
 tqdm
 progress-text
-prettytable
-matplotlib
 scikit-learn
