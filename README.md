@@ -4,9 +4,19 @@ Sequence-to-sequence implementation using PyTorch
 
 ## Install
 
+Clone the project, go into the project directory, and execute
+
 ```shell
 python setup.py install
 ```
+
+or
+
+```shell
+pip install ./
+```
+
+Or simply copy the source code.
 
 ## Usage
 
