@@ -32,10 +32,9 @@ class Trainer(object):
                  valid_dataloder=None,
                  scheduler=None,
                  num_epoches=1,
-                 start_epoch=0,
                  early_stop_num=10,
-                 save_path=None,
-                 save_every_epoch=5,
+                 save_path="./checkpoints",
+                 save_every_epoch=1,
                  plot_loss_group_by="epoch",
                  plot_loss_group_by_every=1,
                  evaluate_before_train=True,
@@ -45,7 +44,6 @@ class Trainer(object):
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.num_epoches = num_epoches
-        self.start_epoch = start_epoch
 
         self.train_dataloder = train_dataloder
         self.valid_dataloder = valid_dataloder
@@ -81,7 +79,7 @@ class Trainer(object):
                             'model': None}
 
     def run(self, grad_clip=5.0, progress_indicator="progress-text"):
-        if self.evaluate_before_train:
+        if self.evaluate_before_train and self.now_epoch < 0:
             logger.info("Evaluation before training.")
             # Evaluate on training set.
             valid_dataloder_backup = self.valid_dataloder
@@ -95,7 +93,10 @@ class Trainer(object):
             self.train_loss_record += [train_loss_avg]
             self.valid_loss_record += [valid_loss_avg]
 
-        for self.now_epoch in range(self.start_epoch, self.num_epoches+1):
+        # Note that the epoch counter starts at 1 and end at max number of epoches + 1,
+        # which is [1, num_epoches], which is also [1, num_epoches + 1)
+        start_epoch = 1 if self.now_epoch < 0 else self.now_epoch + 1 # Start from scratch or continue from a checkpoint?
+        for self.now_epoch in range(start_epoch, self.num_epoches + 1):
             logger.info('Epoch {} starts.'.format(self.now_epoch))
 
             train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, progress_indicator=progress_indicator)
@@ -162,7 +163,7 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                'best_epoch_{}.pt'.format(save_dict['epoch']))
+                                'best_epoch_{}-model_only.pt'.format(save_dict['epoch']))
             torch.save(save_dict, joint_save_path)
 
     def save(self):
@@ -170,7 +171,7 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                'epoch_{}.pt'.format(self.now_epoch))
+                                'epoch_{}-train_checkpoint.pt'.format(self.now_epoch))
             save_dict = {'model':self.model.state_dict(),
                          'optimizer':self.optimizer.state_dict(),
                          'scheduler':self.scheduler.state_dict() if self.scheduler is not None else None,
@@ -194,16 +195,21 @@ class Trainer(object):
     def load(self, filename):
         if not os.path.exists(filename):
             raise ValueError
-        logger.info('Loading checkpoint file [{}]...'.format(filename))
+        logger.info('Loading checkpoint file [{}].'.format(filename))
         checkpoint = torch.load(filename)
-        logger.info('Loading model state dictionaries...')
+
+        logger.info('Loading model state dictionary.')
         self.model.load_state_dict(checkpoint['model'])
         if self.use_gpu:
             self.model.to(torch.device("cuda"))
-        logger.info('Loading model optimizer state dictionaries...')
+
+        logger.info('Loading model optimizer state dictionary.')
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-        if self.scheduler is not None:
+
+        if checkpoint['scheduler'] is not None:
+            logger.info('Loading model optimizer scheduler state dictionary.')
             self.scheduler.load_state_dict(checkpoint['scheduler'])
+
         self.now_epoch = checkpoint['epoch']
         self.train_loss_record = checkpoint['train_loss_record']
         self.valid_loss_record = checkpoint['valid_loss_record']
@@ -219,6 +225,7 @@ class Trainer(object):
             wrapped_iterable = tqdm(self.valid_dataloder)
         else:
             wrapped_iterable = self.valid_dataloder
+
         for inputs in wrapped_iterable:
             target = inputs['target']
             score = self.model(inputs)
@@ -232,12 +239,14 @@ class Trainer(object):
     def train_epoch(self, grad_clip=5.0, progress_indicator="progress-text"):
         self.model.train()
         losses = []
+
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.train_dataloder, task_name="Train Epoch")#, every_percent=1)
+            wrapped_iterable = ProgressText(self.train_dataloder, task_name="Train Epoch")
         elif progress_indicator == "tqdm":
             wrapped_iterable = tqdm(self.train_dataloder)
         else:
             wrapped_iterable = self.train_dataloder
+
         for inputs in wrapped_iterable:
             target = inputs['target']
             loss = self.train_batch(inputs, target, grad_clip=grad_clip)
@@ -262,7 +271,8 @@ class Trainer(object):
         loss.backward()
         # Clip the gradient.
         if grad_clip is not None and grad_clip > 0 :
-            clip_grad_norm_(parameters=self.model.parameters(), max_norm=grad_clip)  # Clip in place.
+            # Trailing underscore means clip in place.
+            clip_grad_norm_(parameters=self.model.parameters(), max_norm=grad_clip)
         # Update model parameter by gradient descent.
         self.optimizer.step()
         return loss
