@@ -25,6 +25,8 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+logger.info("Program starts with PID: {}".format(os.getpid()))
+
 use_gpu = torch.cuda.is_available()
 device = torch.device("cuda" if use_gpu else "cpu")
 config_file = "./config.json"
@@ -71,9 +73,11 @@ def pair_is_simple(p):
 #----------------------------------------------------------
 
 vocab_file_eng = "vocab_eng.json"
-if not os.path.exists(vocab_file_eng):
+vocab_file_fra = "vocab_fra.json"
+if not os.path.exists(vocab_file_eng) or not os.path.exists(vocab_file_fra):
     vocab_eng = Vocab("eng")
-    logger.info('Creating vocab...')
+    vocab_fra = Vocab("fra")
+    logger.info('Creating vocab.')
     with open("./data/eng-fra.txt", "r") as f:
         for line in ProgressText(f.readlines()):
             line = line.split('\t')
@@ -81,32 +85,20 @@ if not os.path.exists(vocab_file_eng):
             if not pair_is_simple(line):
                 continue
             vocab_eng.add_sentence(line[0], to_lower=True, remove_punc=True)
-    logger.info(vocab_eng)
-    logger.info('Storing vocab...')
-    vocab_eng.to_json(vocab_file_eng)
-else:
-    logger.info('Loading vocab...')
-    vocab_eng = Vocab("eng")
-    vocab_eng.from_json(vocab_file_eng)
-
-vocab_file_fra = "vocab_fra.json"
-if not os.path.exists(vocab_file_fra):
-    vocab_fra = Vocab("fra")
-    logger.info('Creating vocab...')
-    with open("./data/eng-fra.txt", "r") as f:
-        for line in ProgressText(f.readlines()):
-            line = line.split('\t')
-            line = normalizePair(line)
-            if not pair_is_simple(line):
-                continue
             vocab_fra.add_sentence(line[1], to_lower=True, remove_punc=True)
+    logger.info(vocab_eng)
     logger.info(vocab_fra)
-    logger.info('Storing vocab...')
+    logger.info('Storing vocab.')
+    vocab_eng.to_json(vocab_file_eng)
     vocab_fra.to_json(vocab_file_fra)
 else:
-    logger.info('Loading vocab...')
+    logger.info('Loading vocab.')
+    vocab_eng = Vocab("eng")
     vocab_fra = Vocab("fra")
+    vocab_eng.from_json(vocab_file_eng)
     vocab_fra.from_json(vocab_file_fra)
+    logger.info(vocab_eng)
+    logger.info(vocab_fra)
 
 def prepare_data(data_path, vocab_eng, vocab_fra):
     data_ids = []
@@ -121,7 +113,7 @@ def prepare_data(data_path, vocab_eng, vocab_fra):
                              "target": vocab_eng.indexes_from_sentence(tgt, add_sos=True, add_eos=True)})
     return data_ids
 
-logger.info('Preparing data...')
+logger.info('Preparing data.')
 train_data_path = 'train_data.json'
 val_data_path = 'val_data.json'
 split_val_ratio = 0.2
@@ -143,7 +135,7 @@ train_data_batches = train_data.create_batches(batch_size=config["train_batch_si
 val_data = Dataset(val_data)
 val_data_batches = val_data.create_batches(batch_size=config["eval_batch_size"], shuffle=False, device=device)
 
-logger.info('Building model...')
+logger.info('Building mode.')
 model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 tgt_vocab_size=len(vocab_eng),
                 embed_size=config["embed_size"],
@@ -165,7 +157,7 @@ logger.info(model)
 logger.info('Models built and ready to go!')
 
 # Initialize optimizers
-logger.info('Building optimizers...')
+logger.info('Building optimizers.')
 if config["optimizer"].lower() == "adam":
     model_optimizer = optim.Adam(model.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
 elif config["optimizer"].lower() == "sgd":
@@ -201,10 +193,12 @@ if args.checkpoint is not None:
     trainer.load(args.checkpoint)
 
 # Run training iterations
-logger.info("Starting Training!")
+logger.info("Start training.")
 trainer.run(grad_clip=config["grad_clip"], progress_indicator=config["progress_indicator"])
+logger.info("Finish training.")
 
-for data in random.choices(val_data, k=20):
+logger.info("Some examples from the final model:\n")
+for data in random.choices(val_data, k=5):
     input, target = data["input"], data["target"]
     infer = model.infer(input, start_token=target[0])
 
