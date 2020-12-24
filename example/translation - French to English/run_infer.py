@@ -100,7 +100,7 @@ with open("./inference.txt", mode="w") as f:
         input = " ".join(vocab_fra.sentence_from_indexes(input)).replace("<EOS> ", "")
         infer = " ".join(vocab_eng.sentence_from_indexes(infer)).replace("<EOS> ", "")
         target = " ".join(vocab_eng.sentence_from_indexes(target)).replace("<EOS> ", "")
-        string ="input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
+        string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
         f.write(string)
 
 logger.info("Inference finished.")
