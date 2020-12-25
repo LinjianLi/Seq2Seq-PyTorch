@@ -148,7 +148,7 @@ class Trainer(object):
         plt.clf() # Clear current figures.
         plt.plot(self.train_loss_record, label='Train loss')
         plt.plot(self.valid_loss_record, label='Valid loss')
-        plt.legend()
+        plt.legend() # Show the label of each curve.
         plt.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
         plt.ylabel("Loss")
         plt.savefig(self.save_path + 'train_val_loss_plot.svg')
