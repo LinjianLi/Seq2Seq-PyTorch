@@ -33,6 +33,7 @@ class Trainer(object):
                  scheduler=None,
                  num_epoches=1,
                  early_stop_num=10,
+                 save_best_model=True,
                  save_path="./checkpoints",
                  save_every_epoch=1,
                  plot_loss_group_by="epoch",
@@ -53,6 +54,7 @@ class Trainer(object):
 
         self.scheduler = scheduler
         self.early_stop_num = early_stop_num
+        self.save_best_model = save_best_model
         self.save_path = save_path
         self.save_every_epoch = save_every_epoch
         self.plot_loss_group_by = plot_loss_group_by.lower() # option: "epoch" or "update"
@@ -117,7 +119,8 @@ class Trainer(object):
             if valid_loss_avg < self.best_record['valid_loss']:
                 self.best_record['valid_loss'] = valid_loss_avg
                 self.best_record['epoch'] = self.now_epoch
-                self.best_record['model'] = self.model
+                if self.save_best_model:
+                    self.best_record['model'] = self.model
 
             # If the loss has not been descending in several epochs, stop training.
             if ((self.early_stop_num != None)
@@ -137,9 +140,10 @@ class Trainer(object):
 
             self.plot_loss() # Update loss plot after each epoch
 
-        self.save_best()
         self.save_loss_record()
         self.plot_loss()
+        if self.save_best_model:
+            self.save_best()
 
     def plot_loss(self):
         if self.save_path is not None:
@@ -194,7 +198,7 @@ class Trainer(object):
 
     def load(self, filename):
         if not os.path.exists(filename):
-            raise ValueError
+            raise FileNotFoundError(filename)
         logger.info('Loading checkpoint file [{}].'.format(filename))
         checkpoint = torch.load(filename)
 
@@ -213,7 +217,6 @@ class Trainer(object):
         self.now_epoch = checkpoint['epoch']
         self.train_loss_record = checkpoint['train_loss_record']
         self.valid_loss_record = checkpoint['valid_loss_record']
-
 
     def eval(self, progress_indicator="progress-text"):
         losses = []
