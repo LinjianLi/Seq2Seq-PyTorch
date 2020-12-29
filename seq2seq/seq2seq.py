@@ -18,11 +18,11 @@ from .decoder_rnn import DecoderRNN
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-file_handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+# logger.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+# stream_handler = logging.StreamHandler()
+# stream_handler.setFormatter(formatter)
+# logger.addHandler(stream_handler)
 
 class Seq2Seq(BaseModel):
     """
