@@ -6,6 +6,7 @@ from tqdm import tqdm
 from progress_text import ProgressText
 import torch
 from torch.nn.utils import clip_grad_norm_
+from .evaluator import Evaluator
 
 import matplotlib
 matplotlib.use("Agg")
@@ -53,6 +54,7 @@ class Trainer(object):
         if self.valid_dataloder is None:
             logger.warning("Validation data loder is not provided! Using train data loder instead.")
             self.valid_dataloder = train_dataloder
+        self.evaluator = Evaluator(loss_fn=self.loss_fn, dataloder=self.valid_dataloder)
 
         if self.gradient_accumulation > 1:
             equiv_batch_size = train_dataloder.batch_size * self.gradient_accumulation
@@ -97,11 +99,11 @@ class Trainer(object):
             logger.info("Evaluation before training.")
             # Evaluate on training set.
             valid_dataloder_backup = self.valid_dataloder
-            self.valid_dataloder = self.train_dataloder
-            train_loss_avg, train_losses = self.eval(progress_indicator=progress_indicator)
-            self.valid_dataloder = valid_dataloder_backup
+            self.evaluator.dataloder = self.train_dataloder
+            train_loss_avg, train_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
+            self.evaluator.dataloder = valid_dataloder_backup
             # Evaluate on validation set.
-            valid_loss_avg, valid_losses = self.eval(progress_indicator=progress_indicator)
+            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
             # Record loss. Only record the average over the dataset instead of each batch.
             logger.info('Train loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
             self.train_loss_record += [train_loss_avg]
@@ -114,7 +116,7 @@ class Trainer(object):
             logger.info('Epoch {} starts.'.format(self.now_epoch))
 
             train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, progress_indicator=progress_indicator)
-            valid_loss_avg, valid_losses = self.eval(progress_indicator=progress_indicator)
+            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
 
             if self.scheduler is not None:
                 self.scheduler.step()
@@ -230,28 +232,6 @@ class Trainer(object):
         self.train_loss_record = checkpoint['train_loss_record']
         self.valid_loss_record = checkpoint['valid_loss_record']
 
-    def eval(self, progress_indicator="progress-text"):
-        losses = []
-        self.model.eval()
-
-        if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.valid_dataloder, task_name="Eval Epoch")
-        elif progress_indicator == "tqdm":
-            wrapped_iterable = tqdm(self.valid_dataloder)
-        else:
-            wrapped_iterable = self.valid_dataloder
-
-        with torch.no_grad():
-            for inputs in wrapped_iterable:
-                target = inputs['target']
-                score = self.model(inputs)
-                if isinstance(target, (tuple, list)) and len(target) == 2:
-                    target, target_lengths = target
-                loss = self.loss_fn(score, target)
-                losses.append(loss.item())
-        loss_avg = sum(losses) / len(losses)
-        return loss_avg, losses
-
     def train_epoch(self, grad_clip=5.0, progress_indicator="progress-text"):
         self.model.train()
         losses = []
@@ -260,6 +240,7 @@ class Trainer(object):
             wrapped_iterable = ProgressText(self.train_dataloder, task_name="Train Epoch")
         elif progress_indicator == "tqdm":
             wrapped_iterable = tqdm(self.train_dataloder)
+            wrapped_iterable.set_description("Train Epoch")
         else:
             wrapped_iterable = self.train_dataloder
 
