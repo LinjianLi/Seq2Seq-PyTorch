@@ -20,6 +20,7 @@
 "batch_first": true,
 "train_batch_size": 8,
 "eval_batch_size": 128,
+"gradient_accumulation": 1,
 "grad_clip": 5.0,
 "teacher_forcing_ratio": 0.5,
 "optimizer": "Adam",

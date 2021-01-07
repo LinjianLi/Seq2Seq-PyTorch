@@ -31,6 +31,7 @@ class Trainer(object):
                  train_dataloder,
                  valid_dataloder=None,
                  scheduler=None,
+                 gradient_accumulation=1,
                  num_epoches=1,
                  early_stop_num=10,
                  save_best_model=True,
@@ -44,6 +45,7 @@ class Trainer(object):
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
+        self.gradient_accumulation = gradient_accumulation
         self.num_epoches = num_epoches
 
         self.train_dataloder = train_dataloder
@@ -51,6 +53,16 @@ class Trainer(object):
         if self.valid_dataloder is None:
             logger.warning("Validation data loder is not provided! Using train data loder instead.")
             self.valid_dataloder = train_dataloder
+
+        if self.gradient_accumulation > 1:
+            equiv_batch_size = train_dataloder.batch_size * self.gradient_accumulation
+            logger.info("Note! Gradient accumulation setting is greater than 1. "
+                        "The equivalent training batch size is the actual batch "
+                        "size times the number of gradient accumulation steps. "
+                        "Current setting: actual={}, accumulation={}, equivalent={}."\
+                            .format(self.train_dataloder.batch_size,
+                                    self.gradient_accumulation,
+                                    equiv_batch_size))
 
         self.scheduler = scheduler
         self.early_stop_num = early_stop_num
@@ -155,7 +167,7 @@ class Trainer(object):
         plt.legend() # Show the label of each curve.
         plt.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
         plt.ylabel("Loss")
-        plt.savefig(self.save_path + 'train_val_loss_plot.svg')
+        plt.savefig(os.path.join(self.save_path, 'train_val_loss_plot.svg'))
 
     def save_best(self):
         logger.info('The best epoch is {}. The best validation loss is {}.'\
@@ -250,16 +262,28 @@ class Trainer(object):
         else:
             wrapped_iterable = self.train_dataloder
 
+        current_grad_accumulation_count = 0
+        current_batch, num_batches =0, len(self.train_dataloder)
+        loss_items_accumulation_normalized = []
         for inputs in wrapped_iterable:
+            current_batch += 1
             target = inputs['target']
-            loss = self.train_batch(inputs, target, grad_clip=grad_clip)
-            losses.append(loss.item())
+            loss = self.loss_on_batch(inputs, target, grad_clip=grad_clip)
+            loss /= self.gradient_accumulation  # Normalize the loss (if averaged)
+            loss_items_accumulation_normalized.append(loss.item())
+            loss.backward()  # Back propagation.
+            current_grad_accumulation_count += 1
+            if current_grad_accumulation_count == self.gradient_accumulation or current_batch == num_batches:
+                self.update_params(grad_clip=grad_clip)
+                current_grad_accumulation_count = 0
+                losses.append(sum(loss_items_accumulation_normalized))  # Append the mean.
+                loss_items_accumulation_normalized = []
             if progress_indicator == "tqdm":
                 wrapped_iterable.set_postfix({'current loss': "{:.3f}".format(loss.item())})
         loss_avg = sum(losses) / len(losses)
         return loss_avg, losses
 
-    def train_batch(self, inputs, targets, grad_clip=None):
+    def loss_on_batch(self, inputs, targets, grad_clip=None):
         # Forward propagation.
         score = self.model(inputs)
         # Calculate loss.
@@ -267,15 +291,13 @@ class Trainer(object):
             targets, target_lengths = targets
         loss = self.loss_fn(score, targets)
         if torch.isnan(loss):
-            logger.error("nan loss encountered")
-            raise ValueError("nan loss encountered")
-        # Back propagation.
-        self.optimizer.zero_grad()
-        loss.backward()
-        # Clip the gradient.
-        if grad_clip is not None and grad_clip > 0 :
+            logger.error("NaN loss encountered")
+            raise ValueError("NaN loss encountered")
+        return loss
+
+    def update_params(self, grad_clip):
+        if grad_clip is not None and grad_clip > 0 :  # Clip the gradient.
             # Trailing underscore means clip in place.
             clip_grad_norm_(parameters=self.model.parameters(), max_norm=grad_clip)
-        # Update model parameter by gradient descent.
-        self.optimizer.step()
-        return loss
+        self.optimizer.step()  # Update model parameter by gradient descent.
+        self.optimizer.zero_grad()  # Clear the gradient for the next update.
