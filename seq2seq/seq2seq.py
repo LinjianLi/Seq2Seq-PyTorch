@@ -161,23 +161,25 @@ class Seq2Seq(BaseModel):
         assert isinstance(input, (list, tuple))
         assert isinstance(input[0], int)
 
-        enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
-        enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
-        if self.use_gpu:
-            enc_inputs = enc_inputs.cuda()
-        enc_inputs = (enc_inputs, None)
+        self.eval()
+        with torch.no_grad():
+            enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
+            enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
+            if self.use_gpu:
+                enc_inputs = enc_inputs.cuda()
+            enc_inputs = (enc_inputs, None)
 
-        dec_inputs = torch.tensor([start_token for _ in range(20)], dtype=torch.long) # shape: (seq_len)
-        dec_inputs = dec_inputs.unsqueeze(0) # shape: (1, seq_len)
-        if self.use_gpu:
-            dec_inputs = dec_inputs.cuda()
+            dec_inputs = torch.tensor([start_token for _ in range(20)], dtype=torch.long) # shape: (seq_len)
+            dec_inputs = dec_inputs.unsqueeze(0) # shape: (1, seq_len)
+            if self.use_gpu:
+                dec_inputs = dec_inputs.cuda()
 
-        enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
-        decoder_output_tokens, decoder_outputs, hidden\
-            = self.decoder(inputs=dec_inputs,
-                           hidden=enc_hidden,
-                           lengths=None,
-                           encoder_outputs=enc_outputs,
-                           teacher_forcing_ratio=0)
-        decoder_output_tokens = decoder_output_tokens.squeeze(0).tolist() # shape: (seq_len)
-        return decoder_output_tokens
+            enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
+            decoder_output_tokens, decoder_outputs, hidden\
+                = self.decoder(inputs=dec_inputs,
+                            hidden=enc_hidden,
+                            lengths=None,
+                            encoder_outputs=enc_outputs,
+                            teacher_forcing_ratio=0)
+            decoder_output_tokens = decoder_output_tokens.squeeze(0).tolist() # shape: (seq_len)
+            return decoder_output_tokens

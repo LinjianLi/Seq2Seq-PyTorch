@@ -229,13 +229,14 @@ class Trainer(object):
         else:
             wrapped_iterable = self.valid_dataloder
 
-        for inputs in wrapped_iterable:
-            target = inputs['target']
-            score = self.model(inputs)
-            if isinstance(target, (tuple, list)) and len(target) == 2:
-                target, target_lengths = target
-            loss = self.loss_fn(score, target)
-            losses.append(loss.item())
+        with torch.no_grad():
+            for inputs in wrapped_iterable:
+                target = inputs['target']
+                score = self.model(inputs)
+                if isinstance(target, (tuple, list)) and len(target) == 2:
+                    target, target_lengths = target
+                loss = self.loss_fn(score, target)
+                losses.append(loss.item())
         loss_avg = sum(losses) / len(losses)
         return loss_avg, losses
 
