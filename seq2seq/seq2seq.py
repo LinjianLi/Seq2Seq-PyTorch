@@ -108,6 +108,7 @@ class Seq2Seq(BaseModel):
                                   batch_first=self.batch_first,
                                   use_gpu=self.use_gpu)
 
+        # TODO: The loss definition block maybe no longer needed. Delete it if so.
         # Loss Definition
         if self.padding_idx is not None:
             weight = torch.ones(self.tgt_vocab_size)
@@ -151,7 +152,7 @@ class Seq2Seq(BaseModel):
                            teacher_forcing_ratio=self.teacher_forcing_ratio)
         return decoder_outputs
 
-    def infer(self, input, start_token=1):
+    def infer(self, input, start_token=1, end_token=2, max_length=20):
         """
         infer
         input: 1-D list of integers representing tokens.
@@ -169,8 +170,8 @@ class Seq2Seq(BaseModel):
                 enc_inputs = enc_inputs.cuda()
             enc_inputs = (enc_inputs, None)
 
-            dec_inputs = torch.tensor([start_token for _ in range(20)], dtype=torch.long) # shape: (seq_len)
-            dec_inputs = dec_inputs.unsqueeze(0) # shape: (1, seq_len)
+            # shape: (batch_size, seq_len)=(1, 1)
+            dec_inputs = torch.tensor([start_token], dtype=torch.long).unsqueeze(0)
             if self.use_gpu:
                 dec_inputs = dec_inputs.cuda()
 
@@ -180,6 +181,13 @@ class Seq2Seq(BaseModel):
                             hidden=enc_hidden,
                             lengths=None,
                             encoder_outputs=enc_outputs,
+                            max_length=max_length,
                             teacher_forcing_ratio=0)
             decoder_output_tokens = decoder_output_tokens.squeeze(0).tolist() # shape: (seq_len)
+
+            # Discard the content after the first end_token.
+            for i in range(len(decoder_output_tokens)):
+                if decoder_output_tokens[i] == end_token:
+                    decoder_output_tokens = decoder_output_tokens[:i+1]
+                    break
             return decoder_output_tokens

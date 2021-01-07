@@ -99,11 +99,11 @@ with open("./inference.txt", mode="w") as f:
     f.write(model_info)
     for data in tqdm(val_data):
         input, target = data["input"], data["target"]
-        infer = model.infer(input, start_token=target[0])
+        infer = model.infer(input, start_token=target[0], end_token=vocab_eng.get_index("<EOS>"), max_length=20)
 
-        input = " ".join(vocab_fra.sentence_from_indexes(input)).replace("<EOS> ", "")
-        infer = " ".join(vocab_eng.sentence_from_indexes(infer)).replace("<EOS> ", "")
-        target = " ".join(vocab_eng.sentence_from_indexes(target)).replace("<EOS> ", "")
+        input = " ".join(vocab_fra.sentence_from_indexes(input))
+        infer = " ".join(vocab_eng.sentence_from_indexes(infer))
+        target = " ".join(vocab_eng.sentence_from_indexes(target))
         string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
         f.write(string)
 

@@ -162,8 +162,6 @@ class DecoderRNN(nn.Module):
         use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
         # Tensor to store the output.
-        # decoder_output_tokens = torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
-        # decoder_output_tokens = inputs[:, :1] if inputs.dim() == 2 else torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
         decoder_output_tokens = torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
         decoder_outputs = torch.tensor([], device=("cuda" if self.use_gpu else "cpu"))
 
