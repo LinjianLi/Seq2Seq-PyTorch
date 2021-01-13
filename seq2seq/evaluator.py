@@ -1,8 +1,6 @@
 from tqdm import tqdm
 from progress_text import ProgressText
 import torch
-import logging
-
 
 class Evaluator(object):
     """docstring for Evaluator"""
@@ -15,7 +13,7 @@ class Evaluator(object):
 
     def __repr__(self):
         main_string = "Evaluator(loss_fn={}, dataloder=(batch_size={}, len={}))"\
-                        .format(self.loss_fn, dataloder.batch_size, len(dataloder))
+                        .format(self.loss_fn, self.dataloder.batch_size, len(self.dataloder))
         return main_string
 
     def eval(self, model, progress_indicator="progress-text"):
