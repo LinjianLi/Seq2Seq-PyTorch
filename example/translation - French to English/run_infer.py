@@ -15,26 +15,24 @@ logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M
                     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO)
+
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-# stream_handler = logging.StreamHandler()
-# stream_handler.setFormatter(formatter)
-# logger.addHandler(stream_handler)
 
 logger.info("Program starts with PID: {}".format(os.getpid()))
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--config", default="./config.json", type=str)
+parser.add_argument("--checkpoint", default=None, type=str)
+args = parser.parse_args()
+
 use_gpu = torch.cuda.is_available()
 device = torch.device("cuda" if use_gpu else "cpu")
-with open("./config.json") as f:
+config_file = args.config
+with open(config_file) as f:
     config = json.load(f)
 
 logger.info("Use GPU: {}.".format(use_gpu))
 logger.info("Configurations:\n{}".format(str(config)))
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--checkpoint", default=None, type=str)
-args = parser.parse_args()
 
 vocab_file_eng = "vocab_eng.json"
 vocab_file_fra = "vocab_fra.json"

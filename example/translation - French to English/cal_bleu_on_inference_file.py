@@ -8,11 +8,6 @@ logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-# stream_handler = logging.StreamHandler()
-# stream_handler.setFormatter(formatter)
-# logger.addHandler(stream_handler)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--inference_file", default="./inference.txt", type=str)
@@ -27,8 +22,14 @@ def cal_bleu(file):
                 references.append(line.split("\t")[-1].split())
             elif line.startswith("infer:"):
                 candidates.append(line.split("\t")[-1].split())
-        logger.info("Corpus BLEU*100: {}"\
+        logger.info("Corpus (1-to-4 Gram) BLEU*100: {}"\
                         .format(corpus_bleu(references, candidates) * 100))
+        logger.info("Corpus (1-to-3 Gram) BLEU*100: {}"\
+                        .format(corpus_bleu(references, candidates, weights=[1/3, 1/3, 1/3, 0]) * 100))
+        logger.info("Corpus (1-to-2 Gram) BLEU*100: {}"\
+                        .format(corpus_bleu(references, candidates, weights=[1/2, 1/2, 0, 0]) * 100))
+        logger.info("Corpus (1 Gram) BLEU*100: {}"\
+                        .format(corpus_bleu(references, candidates, weights=[1, 0, 0, 0]) * 100))
 
 if __name__ == "__main__":
     cal_bleu(args.inference_file)
