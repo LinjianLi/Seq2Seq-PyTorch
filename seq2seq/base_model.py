@@ -6,6 +6,8 @@
 #
 ################################################################################
 
+# Modified by Linjian Li
+
 import os
 import torch
 import torch.nn as nn
@@ -26,12 +28,6 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def __repr__(self):
-
-        # main_string = super(BaseModel, self).__repr__()
-        # num_parameters = sum([p.nelement() for p in self.parameters()])
-        # main_string += "\nNumber of parameters: {}\n".format(num_parameters)
-        # return main_string
-
         table = PrettyTable(["Modules", "Parameters"])
         total_params = 0
         for name, parameter in self.named_parameters():

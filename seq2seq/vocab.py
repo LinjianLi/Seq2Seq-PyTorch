@@ -4,11 +4,6 @@ import re
 import logging
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-# stream_handler = logging.StreamHandler()
-# stream_handler.setFormatter(formatter)
-# logger.addHandler(stream_handler)
 
 # Default word tokens
 PAD_token = 0  # Used for padding short sentences

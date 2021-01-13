@@ -9,11 +9,6 @@ from .attention import Attention
 
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-# stream_handler = logging.StreamHandler()
-# stream_handler.setFormatter(formatter)
-# logger.addHandler(stream_handler)
 
 class DecoderRNN(nn.Module):
     def __init__(self,
@@ -146,6 +141,9 @@ class DecoderRNN(nn.Module):
                 max_length=None,
                 teacher_forcing_ratio=0):
         """
+        The forward process is greedy, that is, only consider the token with 
+        the highest probability at each time step.
+
         Input:
             inputs: token tensor of shape (batch, seq_len) or (batch, seq_len, hidden_size)
             hidden: tensor of shape (num_layers * num_directions, batch, hidden_size)
@@ -171,6 +169,7 @@ class DecoderRNN(nn.Module):
         # Manual unrolling is used to support random teacher forcing.
         # If teacher_forcing_ratio is True or False instead of a probability,
         # the unrolling can be done in graph, despite the function name "forward_step".
+        # [Reference](https://github.com/IBM/pytorch-seq2seq)
         if use_teacher_forcing:
             decoder_input = inputs#[:, :-1]
             decoder_output, hidden\
