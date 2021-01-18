@@ -255,8 +255,8 @@ class Trainer(object):
                 current_grad_accumulation_count = 0
                 losses.append(sum(loss_items_accumulation_normalized))  # Append the mean.
                 loss_items_accumulation_normalized = []
-            if progress_indicator == "tqdm":
-                wrapped_iterable.set_postfix({'current loss': "{:.3f}".format(loss.item())})
+                if progress_indicator == "tqdm":
+                    wrapped_iterable.set_postfix({'current loss': "{:.3f}".format(losses[-1])})
         loss_avg = sum(losses) / len(losses)
         return loss_avg, losses
 
