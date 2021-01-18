@@ -85,13 +85,11 @@ class Vocab:
         for word in keep_words:
             self.add_word(word)
 
-    def indexes_from_sentence(self, sentence, add_sos=False, add_eos=False):
+    def indexes_from_sentence(self, sentence, add_eos=True):
         if isinstance(sentence, str):
             sentence = re.sub(r"(\s\t\n+)", r" ", sentence)
             sentence = sentence.strip().split()
         indexes = [self.get_index(word) for word in sentence]
-        if add_sos:
-            indexes = [self.get_index("<SOS>")] + indexes
         if add_eos:
             indexes.append(self.get_index("<EOS>"))
         return indexes

@@ -30,6 +30,8 @@ class Seq2Seq(BaseModel):
                  tgt_vocab_size,
                  embed_size,
                  hidden_size,
+                 start_token=1,
+                 end_token=2,
                  padding_idx=None,
                  batch_first=True,
                  num_layers=1,
@@ -51,6 +53,8 @@ class Seq2Seq(BaseModel):
         self.tgt_vocab_size = tgt_vocab_size
         self.embed_size = embed_size
         self.hidden_size = hidden_size
+        self.start_token = start_token
+        self.end_token = end_token
         self.padding_idx = padding_idx
         self.batch_first = batch_first
         self.num_layers = num_layers
@@ -141,6 +145,17 @@ class Seq2Seq(BaseModel):
         enc_inputs, dec_inputs = inputs["input"], inputs["target"]
         enc_outputs, enc_hidden = self.encode(enc_inputs, hidden)
         dec_inputs, dec_input_lengths = dec_inputs
+        # Target does not include SOS token. Need to add SOS.
+        # And need to remove the last token to maintain the length.
+        dec_inputs = torch.cat(
+            (torch.ones(
+                (len(dec_inputs), 1),
+                dtype=torch.long,
+                device=dec_inputs.device
+            ) * self.start_token,
+            dec_inputs),
+            dim=-1
+        )[:, :-1]
         decoder_output_tokens, decoder_outputs, hidden\
             = self.decoder(inputs=dec_inputs,
                            hidden=enc_hidden,
@@ -149,7 +164,7 @@ class Seq2Seq(BaseModel):
                            teacher_forcing_ratio=self.teacher_forcing_ratio)
         return decoder_outputs
 
-    def infer(self, input, start_token=1, end_token=2, max_length=20):
+    def infer(self, input, max_length=20):
         """
         infer
         input: 1-D list of integers representing tokens.
@@ -168,7 +183,7 @@ class Seq2Seq(BaseModel):
             enc_inputs = (enc_inputs, None)
 
             # shape: (batch_size, seq_len)=(1, 1)
-            dec_inputs = torch.tensor([start_token], dtype=torch.long).unsqueeze(0)
+            dec_inputs = torch.tensor([self.start_token], dtype=torch.long).unsqueeze(0)
             if self.use_gpu:
                 dec_inputs = dec_inputs.cuda()
 
@@ -184,7 +199,7 @@ class Seq2Seq(BaseModel):
 
             # Discard the content after the first end_token.
             for i in range(len(decoder_output_tokens)):
-                if decoder_output_tokens[i] == end_token:
+                if decoder_output_tokens[i] == self.end_token:
                     decoder_output_tokens = decoder_output_tokens[:i+1]
                     break
             return decoder_output_tokens

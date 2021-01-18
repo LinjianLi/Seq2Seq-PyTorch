@@ -85,8 +85,8 @@ def prepare_data(data_path, vocab_eng, vocab_fra):
             if not pair_is_simple(line):
                 continue
             tgt, inp = line # French to English
-            data_ids.append({"input": vocab_fra.indexes_from_sentence(inp, add_sos=True, add_eos=True),
-                             "target": vocab_eng.indexes_from_sentence(tgt, add_sos=True, add_eos=True)})
+            data_ids.append({"input": vocab_fra.indexes_from_sentence(inp, add_eos=True),
+                             "target": vocab_eng.indexes_from_sentence(tgt, add_eos=True)})
     return data_ids
 
 def get_train_val_data(data_file="./data/eng-fra.txt", vocab_eng=None, vocab_fra=None):

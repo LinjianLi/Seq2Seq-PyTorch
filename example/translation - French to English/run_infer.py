@@ -72,6 +72,8 @@ model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 tgt_vocab_size=len(vocab_eng),
                 embed_size=config["embed_size"],
                 hidden_size=config["hidden_size"],
+                start_token=config["SOS_token"],
+                end_token=config["EOS_token"],
                 padding_idx=config["PAD_token"],
                 batch_first=config["batch_first"],
                 num_layers=config["num_layers"],
@@ -97,7 +99,7 @@ with open("./inference.txt", mode="w") as f:
     f.write(model_info)
     for data in tqdm(val_data):
         input, target = data["input"], data["target"]
-        infer = model.infer(input, start_token=target[0], end_token=vocab_eng.get_index("<EOS>"), max_length=20)
+        infer = model.infer(input, max_length=20)
 
         input = " ".join(vocab_fra.sentence_from_indexes(input))
         infer = " ".join(vocab_eng.sentence_from_indexes(infer))

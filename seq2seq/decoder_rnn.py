@@ -171,6 +171,9 @@ class DecoderRNN(nn.Module):
         # the unrolling can be done in graph, despite the function name "forward_step".
         # [Reference](https://github.com/IBM/pytorch-seq2seq)
         if use_teacher_forcing:
+            # NOTE: The process about the first token and the length of the input
+            #       should be done in the upper level Seq2Seq model
+            #       instead of in the lower level decoder module.
             decoder_input = inputs#[:, :-1]
             decoder_output, hidden\
                 = self.forward_step(decoder_input, hidden, encoder_outputs)
@@ -184,8 +187,11 @@ class DecoderRNN(nn.Module):
 
         else:
             if max_length is None:
+                # NOTE: The process about the first token and the length of the input
+                #       should be done in the upper level Seq2Seq model
+                #       instead of in the lower level decoder module.
                 max_length = inputs.size(seq_len_dim)
-            decoder_input = inputs[:, :1]#[:, 0].unsqueeze(1)
+            decoder_input = inputs[:, :1]  # Only take the first SOS token.
             for di in range(max_length):
                 decoder_output, hidden\
                     = self.forward_step(decoder_input, hidden, encoder_outputs)
@@ -199,6 +205,5 @@ class DecoderRNN(nn.Module):
                     = torch.cat((decoder_output_tokens, top_ids),
                                 dim=seq_len_dim) # shape: (batch_size, seq_len)
                 decoder_input = top_ids
-        logger.debug("\nDecoder input tokens: {}\nDecoder output tokens: {}"\
-                        .format(inputs, decoder_output_tokens))
+        # logger.debug("\nDecoder input tokens: {}\nDecoder output tokens: {}".format(inputs, decoder_output_tokens))
         return decoder_output_tokens, decoder_outputs, hidden
