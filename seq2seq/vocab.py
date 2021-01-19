@@ -33,7 +33,13 @@ class Vocab:
             self.add_sentence(sentence, to_lower, remove_punc)
 
     def add_sentence(self, sentence, to_lower=False, remove_punc=False):
-        assert isinstance(sentence, str)
+        # Make sure the sentence is a string.
+        # If it is a list of strings (words), convert it to a single string.
+        assert isinstance(sentence, (str, list))
+        if isinstance(sentence, list):
+            assert isinstance(sentence[0], str)
+            sentence = " ".join(sentence)
+
         sentence = re.sub(r"(\s\t\n+)", r" ", sentence)
         sentence = sentence.strip()
         if to_lower:
@@ -69,7 +75,7 @@ class Vocab:
 
         for k, v in self.word2count.items():
             if v >= min_count:
-                keep_words.append(k)
+                keep_words.append((k, v))
 
         logger.info('keep_words {} / {} = {:.4f}'\
                         .format(len(keep_words), len(self.word2index), len(keep_words) / len(self.word2index)))
@@ -82,14 +88,38 @@ class Vocab:
                            EOS_token: "<EOS>", UNK_token: "<UNK>"}
         self.num_words = 4  # Count SOS, EOS, PAD, UNK
 
-        for word in keep_words:
+        for (word, count) in keep_words:
             self.add_word(word)
+            self.word2count[word] = count
 
-    def indexes_from_sentence(self, sentence, add_eos=True):
+    # Keep the most frequent k words.
+    def keep_most_frequent_k(self, k=10000):
+        sorted_word_count = list(self.word2count.items())
+        sorted_word_count.sort(key=lambda w_c: w_c[1], reverse=True)
+        sorted_word_count = sorted_word_count[0:k]
+
+        logger.info('keep_words {} / {} = {:.4f}'\
+                        .format(len(sorted_word_count), len(self.word2index), len(sorted_word_count) / len(self.word2index)))
+
+        # Reinitialize dictionaries
+        self.word2index = {"<PAD>": PAD_token, "<SOS>": SOS_token,
+                           "<EOS>": EOS_token, "<UNK>": UNK_token}
+        self.word2count = {}
+        self.index2word = {PAD_token: "<PAD>", SOS_token: "<SOS>",
+                           EOS_token: "<EOS>", UNK_token: "<UNK>"}
+        self.num_words = 4  # Count SOS, EOS, PAD, UNK
+
+        for (word, count) in sorted_word_count:
+            self.add_word(word)
+            self.word2count[word] = count
+
+    def indexes_from_sentence(self, sentence, add_sos=False, add_eos=False):
         if isinstance(sentence, str):
             sentence = re.sub(r"(\s\t\n+)", r" ", sentence)
             sentence = sentence.strip().split()
         indexes = [self.get_index(word) for word in sentence]
+        if add_sos:
+            indexes = [self.get_index("<SOS>")] + indexes
         if add_eos:
             indexes.append(self.get_index("<EOS>"))
         return indexes

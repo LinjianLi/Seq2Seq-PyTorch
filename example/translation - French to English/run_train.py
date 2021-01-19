@@ -89,8 +89,6 @@ if config["scheduler"].lower() == "steplr":
 else:
     optimizer_scheduler = None
 
-save_dir = config["save_dir"]
-
 trainer = Trainer(model=model,
                   loss_fn=NLLLoss(ignore_index=config["PAD_token"], reduction='mean'),
                   optimizer=model_optimizer,
@@ -105,7 +103,8 @@ trainer = Trainer(model=model,
                   save_every_epoch=config["save_every_epoch"],
                   plot_loss_group_by=config["plot_loss_group_by"],
                   plot_loss_group_by_every=config["plot_loss_group_by_every"],
-                  evaluate_before_train=config["evaluate_before_train"])
+                  evaluate_before_train=config["evaluate_before_train"],
+                  use_gpu=use_gpu)
 
 if args.checkpoint is not None:
     trainer.load(args.checkpoint)
