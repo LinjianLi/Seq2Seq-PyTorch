@@ -28,7 +28,7 @@ args = parser.parse_args()
 use_gpu = torch.cuda.is_available()
 device = torch.device("cuda" if use_gpu else "cpu")
 config_file = args.config
-with open(config_file) as f:
+with open(config_file, "r", encoding="utf-8") as f:
     config = json.load(f)
 
 logger.info("Use GPU: {}.".format(use_gpu))
@@ -54,7 +54,7 @@ val_data_path = 'val_data.json'
 if not os.path.exists(val_data_path):
     raise FileNotFoundError(val_data_path)
 else:
-    with open(val_data_path, "r") as f:
+    with open(val_data_path, "r", encoding="utf-8") as f:
         val_data = json.load(f)
 
 # Load model if a args.checkpoint is provided
@@ -65,7 +65,7 @@ if args.checkpoint is not None:
     # If loading a model trained on GPU to CPU
     model_sd = checkpoint['model']
 else:
-    logger.warning("No checkpoint file proveded! Using randomly initialized model!")
+    logger.warning("No checkpoint file provided! Using randomly initialized model!")
 
 logger.info('Building model.')
 model = Seq2Seq(src_vocab_size=len(vocab_fra),
@@ -94,7 +94,8 @@ model.to(device)
 
 logger.info('Models built and ready to go!')
 
-with open("./inference.txt", mode="w") as f:
+logger.info("Inference greedy search start.")
+with open("./inference-greedy_search.txt", mode="w", encoding="utf-8") as f:
     model_info = "Model from checkpoint: {}\n".format(args.checkpoint)
     f.write(model_info)
     for data in tqdm(val_data):
@@ -106,5 +107,21 @@ with open("./inference.txt", mode="w") as f:
         target = " ".join(vocab_eng.sentence_from_indexes(target))
         string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
         f.write(string)
+logger.info("Inference greedy search finished.")
+
+logger.info("Inference beam search start.")
+with open("./inference-beam_search.txt", mode="w", encoding="utf-8") as f:
+    model_info = "Model from checkpoint: {}\n".format(args.checkpoint)
+    f.write(model_info)
+    for data in tqdm(val_data):
+        input, target = data["input"], data["target"]
+        infer = model.infer_beam(input, max_length=20, beam_width=5)
+
+        input = " ".join(vocab_fra.sentence_from_indexes(input))
+        infer = " ".join(vocab_eng.sentence_from_indexes(infer))
+        target = " ".join(vocab_eng.sentence_from_indexes(target))
+        string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
+        f.write(string)
+logger.info("Inference beam search finished.")
 
 logger.info("Inference finished.")

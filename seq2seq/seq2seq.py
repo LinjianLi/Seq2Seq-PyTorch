@@ -10,18 +10,29 @@
 
 import torch
 import torch.nn as nn
+from dataclasses import dataclass
 
 from .criterions import NLLLoss
 from .base_model import BaseModel
 from .embedder import Embedder
 from .simple_rnn import SimpleRNN
 from .decoder_rnn import DecoderRNN
+from .beam_search_utils import BeamSearchScorer
+from .generation_utils import GenerationMixin
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-class Seq2Seq(BaseModel):
+@dataclass
+class Config:
+    # These attributes are needed in `GenerationMixin.beam_search()`.
+    is_encoder_decoder = True
+    max_length = -1
+    pad_token_id = -1
+    eos_token_id = -1
+
+class Seq2Seq(BaseModel, GenerationMixin):
     """
     Seq2Seq
     """
@@ -66,7 +77,18 @@ class Seq2Seq(BaseModel):
         self.dropout = dropout
         self.rnn_cell = rnn_cell
         self.teacher_forcing_ratio = teacher_forcing_ratio
+
         self.use_gpu = use_gpu
+        if self.use_gpu and (not torch.cuda.is_available()):
+                logger.error("Passing argument use_gpu=True but torch.cuda.is_available()==False")
+                logger.error("Swich use_gpu=False")
+                self.use_gpu=False
+        if self.use_gpu:
+            self.device = torch.device("cuda")
+        else:
+            logger.info("Using CPU")
+            self.device = torch.device("cpu")
+        self.to(self.device)
 
         enc_embedder = Embedder(num_embeddings=self.src_vocab_size,
                                 embedding_dim=self.embed_size,
@@ -120,12 +142,6 @@ class Seq2Seq(BaseModel):
                                 ignore_index=self.padding_idx,
                                 reduction='mean')
 
-        if self.use_gpu:
-            logger.info("Using GPU")
-            self.cuda()
-        else:
-            logger.info("Using CPU")
-
         logger.debug(self)
 
     def encode(self, inputs, hidden=None):
@@ -164,9 +180,17 @@ class Seq2Seq(BaseModel):
                            teacher_forcing_ratio=self.teacher_forcing_ratio)
         return decoder_outputs
 
-    def infer(self, input, max_length=20):
+    def infer(self, input, max_length: int=20, mode: str="greedy", beam_width: int=-1):
+        assert isinstance(mode, str)
+        mode = mode.lower()
+        assert mode in ("greedy", "beam")
+        if mode == "greedy":
+            return self.infer_greedy(input=input, max_length=max_length)
+        elif mode == "beam":
+            return self.infer_beam(input=input, max_length=max_length, beam_width=beam_width)
+
+    def infer_greedy(self, input, max_length=20):
         """
-        infer
         input: 1-D list of integers representing tokens.
         return: 1-D list of integers representing tokens
         """
@@ -178,14 +202,12 @@ class Seq2Seq(BaseModel):
         with torch.no_grad():
             enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
             enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
-            if self.use_gpu:
-                enc_inputs = enc_inputs.cuda()
+            enc_inputs = enc_inputs.to(self.device)
             enc_inputs = (enc_inputs, None)
 
             # shape: (batch_size, seq_len)=(1, 1)
             dec_inputs = torch.tensor([self.start_token], dtype=torch.long).unsqueeze(0)
-            if self.use_gpu:
-                dec_inputs = dec_inputs.cuda()
+            dec_inputs = dec_inputs.to(self.device)
 
             enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
             decoder_output_tokens, decoder_outputs, hidden\
@@ -203,3 +225,86 @@ class Seq2Seq(BaseModel):
                     decoder_output_tokens = decoder_output_tokens[:i+1]
                     break
             return decoder_output_tokens
+
+    def infer_beam(self, input, max_length=20, beam_width=5):
+        """
+        input: 1-D list of integers representing sequence of tokens.
+        return: 1-D list of integers representing tokens.
+
+        This function is only intended for batch size of 1, inorder to be consistent
+        with the `infer_greedy()`. May will support batch size greater than 1 in the future.
+
+        Use the beam search implementation from Transformers by HuggingFace.
+        The implementation code is in the class `GenerationMixin`.
+        Thus, we need to adapt the input and output to fit the API.
+
+        TODO: Test the correctness.
+        """
+
+        assert isinstance(input, (list, tuple))
+        assert isinstance(input[0], int)
+
+        batch_size = 1  # Intended for batch size of 1.
+
+        self.eval()
+        with torch.no_grad():
+            enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
+            enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
+            enc_inputs = enc_inputs.to(self.device)
+            enc_inputs = (enc_inputs, None)
+
+            dec_inputs = torch.ones((batch_size * beam_width, 1),
+                                     device=self.device,
+                                     dtype=torch.long)
+            dec_inputs = dec_inputs * self.start_token
+            dec_inputs = dec_inputs.to(self.device)
+
+            enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
+
+            # add encoder_outputs to model keyword arguments
+            # This format is needed in `GenerationMixin.beam_search()`.
+            model_kwargs = {
+                "encoder_outputs": {
+                    "hidden_states":
+                        enc_outputs.repeat_interleave(beam_width, dim=0),
+                    "last_hidden_state":
+                        # Last hidden state is not batch first.
+                        enc_hidden.repeat_interleave(beam_width, dim=1)
+                }
+            }
+
+            # instantiate beam scorer
+            # Intended for batch size of 1.
+            beam_scorer = BeamSearchScorer(
+                batch_size=1,
+                max_length=max_length,
+                num_beams=beam_width,
+                device=self.device,
+            )
+
+            # These attributes are needed in `GenerationMixin.beam_search()`.
+            self.config = Config()
+            self.config.is_encoder_decoder = True
+            self.config.max_length = max_length
+            self.config.pad_token_id = self.padding_idx
+            self.config.eos_token_id = self.end_token
+
+            outputs = self.beam_search(input_ids=dec_inputs,
+                                       beam_scorer=beam_scorer,
+                                       max_length=max_length,
+                                       pad_token_id=self.padding_idx,
+                                       eos_token_id=self.end_token,
+                                       output_attentions=False,
+                                       **model_kwargs)
+
+            sequences, sequences_scores = outputs.sequences, outputs.sequences_scores
+            sequences = sequences[:, 1:]  # Remove the <SOS> token. `GenerationMixin.beam_search()` does not exclude <SOS> token.
+            sequences, sequences_scores = sequences.tolist(), sequences_scores.tolist()
+            sequences, sequences_scores = sequences[0], sequences_scores[0]
+
+            # Discard the content after the first end_token.
+            for i in range(max_length):
+                if sequences[i] == self.end_token:
+                    sequences = sequences[:i+1]
+                    break
+            return sequences#, sequences_scores
