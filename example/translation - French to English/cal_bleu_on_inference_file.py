@@ -19,7 +19,7 @@ def cal_bleu(file):
         references, candidates = [], []
         for line in f:
             if line.startswith("target:"):
-                references.append(line.split("\t")[-1].split())
+                references.append([line.split("\t")[-1].split()])
             elif line.startswith("infer:"):
                 candidates.append(line.split("\t")[-1].split())
         logger.info("Corpus (1-to-4 Gram) BLEU*100: {}"\

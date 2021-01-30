@@ -46,7 +46,7 @@ def create_vocab(vocab_file_eng, vocab_file_fra):
         vocab_eng = Vocab("eng")
         vocab_fra = Vocab("fra")
         logger.info('Creating vocab.')
-        with open("./data/eng-fra.txt", "r") as f:
+        with open("./data/eng-fra.txt", "r", encoding="utf-8") as f:
             for line in ProgressText(f.readlines(), task_name="Create Vocab"):
                 line = line.split('\t')
                 line = normalizePair(line)
@@ -78,7 +78,7 @@ def get_vocab():
 
 def prepare_data(data_path, vocab_eng, vocab_fra):
     data_ids = []
-    with open(data_path, "r") as f:
+    with open(data_path, "r", encoding="utf-8") as f:
         for line in ProgressText(f.readlines(), task_name="Prepare Data"):
             line = line.split('\t')
             line = normalizePair(line)
@@ -97,14 +97,14 @@ def get_train_val_data(data_file="./data/eng-fra.txt", vocab_eng=None, vocab_fra
     if not os.path.exists(train_data_path) or not os.path.exists(val_data_path):
         data = prepare_data(data_file, vocab_eng=vocab_eng, vocab_fra=vocab_fra)
         train_data, val_data = train_test_split(data, test_size=split_val_ratio)
-        with open(train_data_path, "w") as f:
+        with open(train_data_path, "w", encoding="utf-8") as f:
             json.dump(train_data, f)
-        with open(val_data_path, "w") as f:
+        with open(val_data_path, "w", encoding="utf-8") as f:
             json.dump(val_data, f)
     else:
-        with open(train_data_path, "r") as f:
+        with open(train_data_path, "r", encoding="utf-8") as f:
             train_data = json.load(f)
-        with open(val_data_path, "r") as f:
+        with open(val_data_path, "r", encoding="utf-8") as f:
             val_data = json.load(f)
     return (train_data, val_data)
 
