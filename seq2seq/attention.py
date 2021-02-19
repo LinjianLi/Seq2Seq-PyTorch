@@ -30,7 +30,18 @@ class Attention(nn.Module):
                  return_attn_only=False,
                  project=False):
         super(Attention, self).__init__()
-        assert (mode in ("dot", "scaled-dot", "general", "mlp", "default", None)), (
+        assert (
+            mode in (
+                "dot",
+                "scaled-dot",
+                "general",
+                "concat",
+                "mlp",
+                "additive",
+                "default",
+                None
+            )
+        ), (
             "Unsupported attention mode: {mode}"
         )
 
@@ -44,12 +55,19 @@ class Attention(nn.Module):
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(dim=-1)
 
-        if mode == "general":
+        if self.mode == "general":
             self.linear_query = nn.Linear(
-                self.query_size, self.value_size, bias=False)
-        elif mode == "mlp":
+                self.query_size, self.key_size, bias=False)
+        elif self.mode == "concat":
+            self.W = nn.Linear(
+                self.query_size + self.key_size,
+                self.hidden_size,
+                bias=False
+            )
+            self.v = nn.Linear(self.hidden_size, 1, bias=False)
+        elif self.mode == "mlp" or self.mode == "additive":
             self.linear_query = nn.Linear(
-                self.query_size, self.hidden_size, bias=True)
+                self.query_size, self.hidden_size, bias=False)
             self.linear_key = nn.Linear(
                 self.key_size, self.hidden_size, bias=False)
             self.v = nn.Linear(self.hidden_size, 1, bias=False)
@@ -58,12 +76,13 @@ class Attention(nn.Module):
             self.linear_project = nn.Sequential(
                 nn.Linear(in_features=self.hidden_size + self.value_size,
                           out_features=self.hidden_size),
-                self.tanh())
+                self.tanh()
+            )
 
     def __repr__(self):
         main_string = "Attention({}, {}, {}"\
             .format(self.query_size, self.key_size, self.value_size)
-        if self.mode == "mlp":
+        if self.mode == "mlp" or self.mode == "additive":
             main_string += ", {}".format(self.hidden_size)
         main_string += ", mode='{}'".format(self.mode)
         if self.project:
@@ -76,17 +95,7 @@ class Attention(nn.Module):
             # I am not sure if I should use `.clone()` or not.
             values = keys#.clone()
 
-        logger.debug(self)
-        logger.debug('query.shape: {}\n'
-                    'keys.shape: {}\n'
-                    'values.shape: {}'
-                    'mask.shape: {}'\
-                        .format(query.shape,
-                                keys.shape,
-                                values.shape if values is not None else None,
-                                mask.shape if mask is not None else None))
-
-        if self.mode == "dot":
+        if self.mode == "dot" or self.mode == "scaled-dot":
             if query.size(-1) != keys.size(-1):
                 raise Exception("Attention of dot mode expects the query and"
                                 "the key to have the same size of the last"
@@ -94,16 +103,8 @@ class Attention(nn.Module):
                                     .format(query.size(-1), keys.size(-1)))
             # (batch_size, query_length, key_length)
             attn = torch.bmm(query, keys.transpose(1, 2))
-
-        elif self.mode == "scaled-dot":
-            if query.size(-1) != keys.size(-1):
-                raise Exception("Attention of dot mode expects the query and"
-                                "the key to have the same size of the last"
-                                "dimension! But receives {} and {}."\
-                                    .format(query.size(-1), keys.size(-1)))
-            # (batch_size, query_length, key_length)
-            attn = torch.bmm(query, keys.transpose(1, 2))
-            attn /= torch.sqrt(torch.tensor(keys.size(-1), dtype=torch.float))
+            if self.mode == "scaled-dot":
+                attn /= torch.sqrt(torch.tensor(keys.size(-1), dtype=torch.float))
 
         elif self.mode == "general":
             if self.key_size != keys.size(-1):
@@ -115,13 +116,31 @@ class Attention(nn.Module):
             # (batch_size, query_length, key_length)
             attn = torch.bmm(query_linear_to_key_size, keys.transpose(1, 2))
 
-        elif self.mode == "mlp":
-            # (batch_size, query_length, key_length, hidden_size)
-            hidden = self.linear_query(query).unsqueeze(2)\
-                    + self.linear_key(keys).unsqueeze(1)
-            hidden = self.tanh(hidden)
+        elif self.mode == "concat":
+            if self.key_size != keys.size(-1):
+                raise Exception("Expected key size ({}) and "
+                                "actural key size ({}) do not match!"\
+                                    .format(self.key_size, keys.size(-1)))
+            num_queries, num_keys = query.size(1), keys.size(1)
+            query = query.unsqueeze(2).expand(-1, -1, num_keys, -1)
+            keys = keys.unsqueeze(1).expand(-1, num_queries, -1, -1)
+            attn = self.v(  # (batch_size, query_length, key_length, 1)
+                self.tanh(
+                    self.W(  # (batch_size, query_length, key_length, hidden_size)
+                        # (batch_size, query_length, query_size + key_size)
+                        torch.cat((query, keys), dim=-1)
+                    )
+                )
+            ).squeeze(-1)  # (batch_size, query_length, key_length)
+
+        elif self.mode == "mlp" or self.mode == "additive":
             # (batch_size, query_length, key_length)
-            attn = self.v(hidden).squeeze(-1)
+            attn = self.v(  # (batch_size, query_length, key_length, 1)
+                self.tanh(
+                    # (batch_size, query_length, key_length, hidden_size)
+                    self.linear_query(query).unsqueeze(2) + self.linear_key(keys).unsqueeze(1)
+                )
+            ).squeeze(-1)  # (batch_size, query_length, key_length)
 
         else:
             raise NotImplementedError("Attention mode not supported!")
