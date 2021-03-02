@@ -303,7 +303,8 @@ class Seq2Seq(BaseModel, GenerationMixin):
             sequences, sequences_scores = sequences[0], sequences_scores[0]
 
             # Discard the content after the first end_token.
-            for i in range(max_length):
+            # `max_length - 1` because of the removal of the start token.
+            for i in range(max_length - 1):
                 if sequences[i] == self.end_token:
                     sequences = sequences[:i+1]
                     break
