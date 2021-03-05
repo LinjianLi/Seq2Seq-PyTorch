@@ -29,6 +29,16 @@ class SimpleRNN(nn.Module):
         self.bidirectional = bidirectional
         self.batch_first = batch_first
 
+        # The GRU and LSTM in PyTorch have the following shape of the output and the last hidden state:
+        #     output of shape (seq_len, batch, num_directions * hidden_size)
+        #     h_n of shape (num_layers * num_directions, batch, hidden_size)
+        #
+        # When using bidirectional RNN, the RNN cell hidden size is set to the half of the network hidden size.
+        # Then the outputs and the processed last hidden state will be of the network hidden size.
+        self.num_directions = 2 if self.bidirectional else 1
+        assert self.hidden_size % self.num_directions == 0
+        self.rnn_cell_hidden_size = self.hidden_size // self.num_directions
+
         self.embedder = embedder
         if self.embedder is None:
             logger.warning("No embedder has been provided!")
@@ -39,10 +49,12 @@ class SimpleRNN(nn.Module):
             self.rnn_cell = nn.GRU
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
-        self.rnn = self.rnn_cell(input_size, hidden_size, num_layers,
-                                dropout=(dropout if num_layers > 1 else 0),
-                                bidirectional=bidirectional,
-                                batch_first=batch_first)
+        self.rnn = self.rnn_cell(self.input_size,
+                                self.rnn_cell_hidden_size,
+                                self.num_layers,
+                                dropout=(self.dropout if self.num_layers > 1 else 0),
+                                bidirectional=self.bidirectional,
+                                batch_first=self.batch_first)
 
         self.use_gpu = use_gpu
         if self.use_gpu:
@@ -87,9 +99,9 @@ class SimpleRNN(nn.Module):
         # hidden of shape (num_layers * num_directions, batch, hidden_size)
         outputs, hidden = self.rnn(inputs, hidden)
 
-        # if self.bidirectional:
-        #     # Now hidden is of shape (num_layers, batch_size, num_directions * hidden_size)
-        #     hidden = self._bridge_bidirectional_hidden(hidden)
+        if self.bidirectional:
+            # Now hidden is of shape (num_layers, batch_size, num_directions * hidden_size)
+            hidden = self._bridge_bidirectional_hidden(hidden)
 
         if input_lengths is not None:
             # Unpack padding
