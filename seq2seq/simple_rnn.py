@@ -78,6 +78,9 @@ class SimpleRNN(nn.Module):
                         inputs,
                         sorted_lengths,
                         batch_first=self.batch_first)
+            if hidden is not None:
+                # Hidden states are always not batch-first.
+                hidden = hidden.index_select(dim=1, index=indices)
 
         # Forward pass through RNN.
         # output of shape (seq_len, batch, num_directions * hidden_size)

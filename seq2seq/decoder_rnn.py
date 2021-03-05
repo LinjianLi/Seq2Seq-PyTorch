@@ -46,7 +46,9 @@ class DecoderRNN(nn.Module):
             self.attn_mode = None
         self.attn_hidden_size = attn_hidden_size
 
-        self.embedding_dropout = nn.Dropout(embedding_dropout)
+        self.embedding_dropout_rate = embedding_dropout
+        if self.embedding_dropout_rate != 0:
+            self.embedding_dropout = nn.Dropout(self.embedding_dropout_rate)
 
         if rnn_cell.lower() == 'lstm':
             self.rnn_cell = nn.LSTM
@@ -66,7 +68,7 @@ class DecoderRNN(nn.Module):
                                             key_size=self.hidden_size,
                                             value_size=self.hidden_size,
                                             hidden_size=self.attn_hidden_size,
-                                            mode=attn_mode)
+                                            mode=self.attn_mode)
             self.linear_concat = nn.Linear(self.hidden_size * 2,
                                             self.hidden_size)
 
@@ -101,7 +103,8 @@ class DecoderRNN(nn.Module):
         if self.embedder is not None:
             # Embedding.
             inputs = self.embedder(input_step)
-            inputs = self.embedding_dropout(inputs)
+            if self.embedding_dropout_rate != 0:
+                inputs = self.embedding_dropout(inputs)
         else:
             inputs = input_step
 
