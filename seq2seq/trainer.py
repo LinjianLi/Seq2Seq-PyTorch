@@ -147,6 +147,7 @@ class Trainer(object):
             if self.save_every_epoch > 0 and self.now_epoch % self.save_every_epoch == 0:
                 self.save()
 
+            self.save_loss_record() # Update loss record after each epoch
             self.plot_loss() # Update loss plot after each epoch
 
         self.save_loss_record()
