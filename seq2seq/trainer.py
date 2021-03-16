@@ -220,7 +220,7 @@ class Trainer(object):
         logger.info('Loading model optimizer state dictionary.')
         self.optimizer.load_state_dict(checkpoint['optimizer'])
 
-        if checkpoint['scheduler'] is not None:
+        if (self.scheduler is not None) and (checkpoint['scheduler'] is not None):
             logger.info('Loading model optimizer scheduler state dictionary.')
             self.scheduler.load_state_dict(checkpoint['scheduler'])
 
