@@ -84,16 +84,23 @@ class DecoderRNN(nn.Module):
     def forward_step(self,
                      input_step,
                      last_hidden=None,
-                     encoder_outputs=None):
+                     encoder_outputs=None,
+                     return_attention=False):
         """
 
         Input:
             input_step: token tensor of shape (batch, seq_len)
 
         Output:
-            log_probs: tensor of shape (batch_size, seq_len, output_size)
-                        representing log of token probability distribution
-            hidden: shape (num_layers * num_directions, batch, hidden_size)
+            Dict {
+                log_probs:
+                    tensor of shape (batch_size, seq_len, output_size)
+                    representing log of token probability distribution
+                last_hidden_state:
+                    shape (num_layers * num_directions, batch, hidden_size)
+                attention_weights:
+                    None if `return_attention=False`
+            }
         """
         if self.attn_mode is not None and encoder_outputs is None:
             raise ValueError("Expect encoder outputs for the attention but get none!")
@@ -121,6 +128,7 @@ class DecoderRNN(nn.Module):
             cat = torch.tanh(self.linear_concat(cat))
             h_tilde = self.out(cat)   # (batch_size, seq_len, output_size)
         else:
+            attn_weights = None
             h_tilde = self.out(rnn_output)   # (batch_size, seq_len, output_size)
 
         # Predict probability distribution of next word.
@@ -129,20 +137,27 @@ class DecoderRNN(nn.Module):
         # "Using the log-softmax will punish bigger mistakes in likelihood space higher."
         # Also, see (https://ai.stackexchange.com/questions/12068/whats-the-advantage-of-log-softmax-over-softmax).
         # Also, see (https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html)
-        # "Use LogSoftmax instead (it’s faster and has better numerical properties)" said by the PyTorch website.
+        # "Use LogSoftmax instead (it's faster and has better numerical properties)" said by the PyTorch website.
         # Maybe I should use log-softmax too.
         # output = F.softmax(h_tilde, dim=-1)
         log_probs = F.log_softmax(h_tilde, dim=-1)
         # Return output and final hidden state
-        return log_probs, hidden
+        output_dict = {"log_probs": log_probs, "last_hidden_state": hidden}
+        if return_attention:
+            output_dict["attention_weights"] = attn_weights
+        else:
+            output_dict["attention_weights"] = None
+        return output_dict
 
     def forward(self,
                 inputs,
                 hidden=None,
                 lengths=None,
                 encoder_outputs=None,
-                max_length=None,
-                teacher_forcing_ratio=0):
+                max_length: int=-1,
+                teacher_forcing_ratio: float=0.0,
+                return_tokens: bool=True,
+                return_attention: bool=False):
         """
         The forward process is greedy, that is, only consider the token with 
         the highest probability at each time step.
@@ -150,24 +165,38 @@ class DecoderRNN(nn.Module):
         Input:
             inputs: token tensor of shape (batch, seq_len) or (batch, seq_len, hidden_size)
             hidden: tensor of shape (num_layers * num_directions, batch, hidden_size)
+            return_tokens:
+                A boolean indicating whether or not decoder needs to decode the output
+                tokens using `torch.topk()`. By setting to `False` at the training
+                stage, we can reduce the memory usage and the computational cost.
 
         Output:
-            decoder_output_tokens: tensor of shape (batch_size, seq_len)
-                                   representing decoded tokens
-            decoder_outputs: tensor of shape (batch_size, seq_len, output_size)
-                             representing log of token distributions
-            hidden: tensor of shape (num_layers * num_directions, batch, hidden_size)
-                            containing the last hidden state of the decoder
+            Dict {
+                decoded_tokens:
+                    tensor of shape (batch_size, seq_len) representing decoded tokens
+                outputs:
+                    tensor of shape (batch_size, seq_len, output_size)
+                    representing token log probability distributions
+                last_hidden_state:
+                    tensor of shape (num_layers * num_directions, batch, hidden_size)
+                    containing the last hidden state of the decoder
+                attention_weights:
+                    tensor of shape (batch_size, seq_len, encoder_output_len)
+                    representing the attention weights
+            }
         """
 
         use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
-        # Tensor to store the output.
-        decoder_output_tokens = torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
-        decoder_outputs = torch.tensor([], device=("cuda" if self.use_gpu else "cpu"))
-
         batch_dim = 0 if self.batch_first else 1
         seq_len_dim = 1 - batch_dim
+
+        output_dict = {
+            "outputs": None,
+            "last_hidden_state": None,
+            "decoded_tokens": None,
+            "attention_weights": None
+        }
 
         # Manual unrolling is used to support random teacher forcing.
         # If teacher_forcing_ratio is True or False instead of a probability,
@@ -177,36 +206,64 @@ class DecoderRNN(nn.Module):
             # NOTE: The process about the first token and the length of the input
             #       should be done in the upper level Seq2Seq model
             #       instead of in the lower level decoder module.
-            decoder_input = inputs#[:, :-1]
-            decoder_output, hidden\
-                = self.forward_step(decoder_input, hidden, encoder_outputs)
+            dec_step_output_dict = self.forward_step(inputs, hidden, encoder_outputs, return_attention=return_attention)
+            decoder_outputs = dec_step_output_dict["log_probs"]
+            output_dict["outputs"] = decoder_outputs
+            output_dict["last_hidden_state"] = dec_step_output_dict["last_hidden_state"]
             # If unrolling is done in graph,
             # decoder_output will be of shape (batch_size, seq_len, output_size)
-            top_vals, top_ids = decoder_output.topk(1)
-            decoder_output_tokens\
-                = torch.cat((decoder_output_tokens, top_ids.squeeze(-1)),
-                            dim=seq_len_dim) # shape: (batch_size, seq_len)
-            decoder_outputs = decoder_output
+            if return_tokens:
+                # Decode the tokens by selecting those with the highest probabilities.
+                top_vals, top_ids = decoder_outputs.topk(1)
+                output_dict["decoded_tokens"] = top_ids.squeeze(-1)  # shape: (batch_size, seq_len)
+            else:
+                output_dict["decoded_tokens"] = None
+            if return_attention:
+                output_dict["attention_weights"] = dec_step_output_dict["attention_weights"]
+            else:
+                output_dict["attention_weights"] = None
 
         else:
-            if max_length is None:
+            # Tensor to store the output.
+            decoder_outputs = torch.tensor([], device=("cuda" if self.use_gpu else "cpu"))
+            if return_tokens:
+                decoded_tokens = torch.tensor([], dtype=torch.long, device=("cuda" if self.use_gpu else "cpu"))
+            else:
+                decoded_tokens = None
+            if return_attention:
+                attention_weights = torch.tensor([], dtype=torch.float, device=("cuda" if self.use_gpu else "cpu"))
+            else:
+                attention_weights = None
+
+            if max_length <= 0:
                 # NOTE: The process about the first token and the length of the input
                 #       should be done in the upper level Seq2Seq model
                 #       instead of in the lower level decoder module.
                 max_length = inputs.size(seq_len_dim)
-            decoder_input = inputs[:, :1]  # Only take the first SOS token.
+            inputs = inputs[:, :1]  # Only take the first SOS token.
             for di in range(max_length):
-                decoder_output, hidden\
-                    = self.forward_step(decoder_input, hidden, encoder_outputs)
-                # decoder_output.shape: (batch, 1, output_size)
+                dec_step_output_dict = self.forward_step(inputs, hidden, encoder_outputs, return_attention=return_attention)
+                step_output, hidden = dec_step_output_dict["log_probs"], dec_step_output_dict["last_hidden_state"]
+                # step_output.shape: (batch, 1, output_size)
                 # decoder_outputs.shape: (batch, seq_len, output_size)
-                decoder_outputs = torch.cat((decoder_outputs, decoder_output), dim=seq_len_dim)
+                decoder_outputs = torch.cat((decoder_outputs, step_output), dim=seq_len_dim)
                 # Without teacher forcing, the next input is decoder's own current output
-                step_output = decoder_output.squeeze(1) # shape: (batch, output_size)
-                top_vals, top_ids = step_output.topk(1) # shape: (batch, 1)
-                decoder_output_tokens\
-                    = torch.cat((decoder_output_tokens, top_ids),
-                                dim=seq_len_dim) # shape: (batch_size, seq_len)
-                decoder_input = top_ids
-        # logger.debug("\nDecoder input tokens: {}\nDecoder output tokens: {}".format(inputs, decoder_output_tokens))
-        return decoder_output_tokens, decoder_outputs, hidden
+                # Decode the tokens by selecting those with the highest probabilities.
+                top_vals, top_ids = step_output.squeeze(1).topk(1) # shape: (batch, 1)
+                if return_tokens:
+                    decoded_tokens = torch.cat((decoded_tokens, top_ids),
+                                                dim=seq_len_dim) # shape: (batch_size, seq_len)
+                if return_attention:
+                    attention_weights = torch.cat((attention_weights, dec_step_output_dict["attention_weights"]), dim=seq_len_dim)
+                inputs = top_ids
+            output_dict["outputs"] = decoder_outputs
+            output_dict["last_hidden_state"] = hidden
+            if return_tokens:
+                output_dict["decoded_tokens"] = decoded_tokens
+            else:
+                output_dict["decoded_tokens"] = None
+            if return_attention:
+                output_dict["attention_weights"] = attention_weights
+            else:
+                output_dict["attention_weights"] = None
+        return output_dict

@@ -26,6 +26,7 @@ class SimpleRNN(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = batch_first
 
@@ -113,7 +114,8 @@ class SimpleRNN(nn.Module):
             hidden = hidden.index_select(dim=1, index=inv_indices)
 
         # Return output and final hidden state.
-        return outputs, hidden
+        output_dict = {"outputs": outputs, "last_hidden_state": hidden}
+        return output_dict
 
     def _bridge_bidirectional_hidden(self, hidden):
         """

@@ -149,12 +149,13 @@ class Seq2Seq(BaseModel, GenerationMixin):
         encode
         """
         enc_inputs, enc_input_lengths = inputs #inputs["inputs"], inputs["lengths"]
-        enc_outputs, enc_hidden = self.encoder(enc_inputs, enc_input_lengths, hidden)
+        enc_output_dict = self.encoder(enc_inputs, enc_input_lengths, hidden)
+        enc_outputs, enc_hidden = enc_output_dict["outputs"], enc_output_dict["last_hidden_state"]
         if self.with_bridge:
             enc_hidden = self.bridge(enc_hidden)
         return enc_outputs, enc_hidden
 
-    def forward(self, inputs, hidden=None):
+    def forward(self, inputs, hidden=None, is_training=True):
         """
         forward
         """
@@ -172,13 +173,16 @@ class Seq2Seq(BaseModel, GenerationMixin):
             dec_inputs),
             dim=-1
         )[:, :-1]
-        decoder_output_tokens, decoder_outputs, hidden\
+        # decoder_output_tokens, decoder_outputs, hidden\
+        dec_output_dict\
             = self.decoder(inputs=dec_inputs,
                            hidden=enc_hidden,
                            lengths=dec_input_lengths,
                            encoder_outputs=enc_outputs,
-                           teacher_forcing_ratio=self.teacher_forcing_ratio)
-        return decoder_outputs
+                           teacher_forcing_ratio=self.teacher_forcing_ratio,
+                           return_tokens=(not is_training))
+        # return decoder_outputs
+        return dec_output_dict["outputs"]
 
     def infer(self, input, max_length: int=20, mode: str="greedy", beam_width: int=-1):
         assert isinstance(mode, str)
@@ -210,14 +214,14 @@ class Seq2Seq(BaseModel, GenerationMixin):
             dec_inputs = dec_inputs.to(self.device)
 
             enc_outputs, enc_hidden = self.encode(inputs=enc_inputs)
-            decoder_output_tokens, decoder_outputs, hidden\
-                = self.decoder(inputs=dec_inputs,
-                            hidden=enc_hidden,
-                            lengths=None,
-                            encoder_outputs=enc_outputs,
-                            max_length=max_length,
-                            teacher_forcing_ratio=0)
-            decoder_output_tokens = decoder_output_tokens.squeeze(0).tolist() # shape: (seq_len)
+            dec_output_dict = self.decoder(inputs=dec_inputs,
+                                           hidden=enc_hidden,
+                                           lengths=None,
+                                           encoder_outputs=enc_outputs,
+                                           max_length=max_length,
+                                           teacher_forcing_ratio=0,
+                                           return_tokens=True)
+            decoder_output_tokens = dec_output_dict["decoded_tokens"].squeeze(0).tolist() # shape: (seq_len)
 
             # Discard the content after the first end_token.
             for i in range(len(decoder_output_tokens)):

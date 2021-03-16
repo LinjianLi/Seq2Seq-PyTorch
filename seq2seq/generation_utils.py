@@ -16,14 +16,13 @@
 
 # Modified by Linjian Li
 
-from dataclasses import dataclass, field, fields
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from dataclasses import dataclass, fields
+from typing import Any, Optional, Tuple, Union
 from collections import OrderedDict
 
 import torch
 from torch.nn import functional as F
 
-# from .file_utils import ModelOutput
 # from .generation_beam_search import BeamScorer, BeamSearchScorer
 from .beam_search_utils import BeamScorer, BeamSearchScorer
 
@@ -415,14 +414,18 @@ class GenerationMixin:
 
                 -- Linjian Li
             """
-            output_tokens, outputs, hidden = self.decoder.forward(
+            # output_tokens, outputs, hidden = self.decoder.forward(
+            output_dict = self.decoder.forward(
                 inputs=input_ids,
                 hidden=encoder_last_hidden_state,
                 lengths=None,
                 encoder_outputs=encoder_hidden_states,
-                max_length=None,
+                max_length=-1,
                 teacher_forcing_ratio=0,
+                return_tokens=False,
+                return_attention=output_attentions
             )
+            outputs = output_dict["outputs"]
             # next_token_logits = outputs.logits[:, -1, :]  # (batch_size * num_beams, vocab_size)
             # next_token_scores = F.log_softmax(next_token_logits, dim=-1)  # (batch_size * num_beams, vocab_size)
             next_token_scores = outputs[:, -1, :]
@@ -437,11 +440,9 @@ class GenerationMixin:
             # Store scores, attentions and hidden_states when required
             scores += (next_token_scores,)
             if output_attentions:
-                decoder_attentions += (
-                    (outputs.decoder_attentions,) if self.config.is_encoder_decoder else (outputs.attentions,)
-                )
+                decoder_attentions += (output_dict["attention_weights"], )
 
-            decoder_hidden_states += (outputs, )
+            decoder_hidden_states += (output_dict["last_hidden_state"], )
 
             # reshape for beam search
             """
