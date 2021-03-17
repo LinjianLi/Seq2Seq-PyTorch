@@ -246,7 +246,7 @@ class Trainer(object):
         for inputs in wrapped_iterable:
             current_batch += 1
             target = inputs['target']
-            loss = self.loss_on_batch(inputs, target, grad_clip=grad_clip)
+            loss = self.loss_on_batch(inputs, target)
             loss /= self.gradient_accumulation  # Normalize the loss (if averaged)
             loss_items_accumulation_normalized.append(loss.item())
             loss.backward()  # Back propagation.
@@ -261,7 +261,7 @@ class Trainer(object):
         loss_avg = sum(losses) / len(losses)
         return loss_avg, losses
 
-    def loss_on_batch(self, inputs, targets, grad_clip=None):
+    def loss_on_batch(self, inputs, targets):
         # Forward propagation.
         score = self.model(inputs)
         # Calculate loss.
