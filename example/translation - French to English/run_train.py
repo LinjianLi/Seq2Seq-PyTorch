@@ -49,7 +49,7 @@ train_data_batches = train_data.create_batches(batch_size=config["train_batch_si
 val_data = Dataset(val_data)
 val_data_batches = val_data.create_batches(batch_size=config["eval_batch_size"], shuffle=False, device=device)
 
-logger.info('Building mode.')
+logger.info('Building model.')
 model = Seq2Seq(src_vocab_size=len(vocab_fra),
                 tgt_vocab_size=len(vocab_eng),
                 embed_size=config["embed_size"],
@@ -81,11 +81,15 @@ elif config["optimizer"].lower() == "sgd":
 else:
     model_optimizer = optim.SGD(model.parameters(), lr=config["learning_rate"])
 
+# Initialize optimizer scheduler.
 if config["scheduler"].lower() == "steplr":
     optimizer_scheduler = optim.lr_scheduler.StepLR(optimizer=model_optimizer,
                                                     step_size=config["scheduler_step_size"],
                                                     gamma=config["scheduler_gamma"],
                                                     last_epoch=-1)
+elif config["scheduler"].lower() != "none":
+    logger.warning("Scheduler {} not supported yet. Not using scheduler.".format(config["scheduler"]))
+    optimizer_scheduler = None
 else:
     optimizer_scheduler = None
 
@@ -98,7 +102,7 @@ trainer = Trainer(model=model,
                   train_dataloder=train_data_batches,
                   valid_dataloder=val_data_batches,
                   early_stop_num=config["early_stop_num"],
-                  save_best_model=True,
+                  save_best_model=config["save_best_model"],
                   save_path=config["save_dir"],
                   save_every_epoch=config["save_every_epoch"],
                   plot_loss_group_by=config["plot_loss_group_by"],

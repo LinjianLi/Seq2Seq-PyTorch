@@ -10,7 +10,7 @@ logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--inference_file", default="./inference.txt", type=str)
+parser.add_argument("--file", "-f", default="./inference.txt", type=str)
 args = parser.parse_args()
 
 def cal_bleu(file):
@@ -32,4 +32,4 @@ def cal_bleu(file):
                         .format(corpus_bleu(references, candidates, weights=[1, 0, 0, 0]) * 100))
 
 if __name__ == "__main__":
-    cal_bleu(args.inference_file)
+    cal_bleu(args.file)

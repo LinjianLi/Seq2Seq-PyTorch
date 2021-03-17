@@ -35,5 +35,6 @@
 "plot_loss_group_by": "Update",
 "plot_loss_group_by_every": 100,
 "evaluate_before_train": true,
+"save_best_model": true,
 "save_dir": "./checkpoints/"
 }
