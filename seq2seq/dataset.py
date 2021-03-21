@@ -68,7 +68,7 @@ class Dataset(torch.utils.data.Dataset):
             return batch
         return collate
 
-    def create_batches(self, batch_size=1, shuffle=False, device=None):
+    def create_batches(self, batch_size=1, shuffle=False, device=None, **kwargs):
         """
         create_batches
         """
@@ -76,5 +76,6 @@ class Dataset(torch.utils.data.Dataset):
                             batch_size=batch_size,
                             shuffle=shuffle,
                             collate_fn=self.collate_fn(device),
-                            pin_memory=False)
+                            pin_memory=False,
+                            **kwargs)
         return loader
