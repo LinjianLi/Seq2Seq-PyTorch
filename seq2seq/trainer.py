@@ -14,9 +14,21 @@ import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
-def avg_every_n_elems(l, n):
-    l = [sum(l[i:i+n]) / n for i in range(0, len(l), n)]
-    return l
+def avg_every_n_elems(l: list, n: int=1, drop_last: bool=False):
+    """
+    drop_last:
+        If `True`, the last group whose size is less than n will be discarded.
+        If `False`, and if the number of the last group of elements is less than n,
+        the average of the last group needs to be correctly computed.
+    """
+    num_remains = len(l) % n
+    result = [sum(l[i:i+n]) / n for i in range(0, len(l), n)]
+    if num_remains != 0:
+        if drop_last:
+            result = result[:-1]
+        else:
+            result[-1] = sum(l[-num_remains:]) / num_remains
+    return result
 
 class Trainer(object):
     """docstring for Trainer"""
