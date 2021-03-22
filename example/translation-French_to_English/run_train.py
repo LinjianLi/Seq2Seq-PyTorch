@@ -45,7 +45,7 @@ logger.info("Configurations:\n{}".format(str(config)))
 (train_data, val_data) = get_train_val_data(data_file="./data/eng-fra.txt", vocab_eng=vocab_eng, vocab_fra=vocab_fra)
 
 train_data = Dataset(train_data)
-train_data_batches = train_data.create_batches(batch_size=config["train_batch_size"], shuffle=False, device=device)
+train_data_batches = train_data.create_batches(batch_size=config["train_batch_size"], shuffle=True, device=device)
 val_data = Dataset(val_data)
 val_data_batches = val_data.create_batches(batch_size=config["eval_batch_size"], shuffle=False, device=device)
 
