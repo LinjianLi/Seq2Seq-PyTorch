@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 import torch
 
-from seq2seq.vocab import Vocab
-from seq2seq.seq2seq import Seq2Seq
+from seq2seq.inputter.vocab import Vocab
+from seq2seq.model.seq2seq import Seq2Seq
 
 import logging
 

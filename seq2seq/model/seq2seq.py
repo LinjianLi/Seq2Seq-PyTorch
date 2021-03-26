@@ -12,13 +12,13 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
-from .criterions import NLLLoss
-from .base_model import BaseModel
-from .embedder import Embedder
-from .simple_rnn import SimpleRNN
-from .decoder_rnn import DecoderRNN
-from .beam_search_utils import BeamSearchScorer
-from .generation_utils import GenerationMixin
+from seq2seq.criterion.criterions import NLLLoss
+from seq2seq.model.base_model import BaseModel
+from seq2seq.inputter.embedder import Embedder
+from seq2seq.module.simple_rnn import SimpleRNN
+from seq2seq.module.decoder_rnn import DecoderRNN
+from seq2seq.model.beam_search_utils import BeamSearchScorer
+from seq2seq.model.generation_utils import GenerationMixin
 
 import logging
 

@@ -5,7 +5,7 @@ import csv
 import codecs
 from sklearn.model_selection import train_test_split
 from progress_text import ProgressText
-from seq2seq.vocab import Vocab
+from seq2seq.inputter.vocab import Vocab
 import logging
 
 logger = logging.getLogger(__name__)

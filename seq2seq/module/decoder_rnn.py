@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from .attention import Attention
+from seq2seq.module.attention import Attention
 
 
 logger = logging.getLogger(__name__)

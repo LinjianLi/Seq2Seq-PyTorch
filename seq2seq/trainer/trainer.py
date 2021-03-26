@@ -6,7 +6,7 @@ from tqdm import tqdm
 from progress_text import ProgressText
 import torch
 from torch.nn.utils import clip_grad_norm_
-from .evaluator import Evaluator
+from seq2seq.evaluator.evaluator import Evaluator
 
 import matplotlib
 matplotlib.use("Agg")

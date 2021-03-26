@@ -7,11 +7,11 @@ import random
 import torch
 from torch import optim
 
-from seq2seq.criterions import NLLLoss
-from seq2seq.dataset import Dataset
-from seq2seq.vocab import Vocab
-from seq2seq.seq2seq import Seq2Seq
-from seq2seq.trainer import Trainer
+from seq2seq.criterion.criterions import NLLLoss
+from seq2seq.inputter.dataset import Dataset
+from seq2seq.inputter.vocab import Vocab
+from seq2seq.model.seq2seq import Seq2Seq
+from seq2seq.trainer.trainer import Trainer
 
 from prepare_vocab_and_data import get_vocab, get_train_val_data
 

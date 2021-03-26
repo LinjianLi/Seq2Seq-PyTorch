@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from .utilities import *
+from seq2seq.utility.utilities import *
 
 class Pack(dict):
     """
