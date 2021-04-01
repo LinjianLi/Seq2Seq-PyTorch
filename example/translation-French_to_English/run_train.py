@@ -7,7 +7,7 @@ import random
 import torch
 from torch import optim
 
-from seq2seq.criterion.criterions import NLLLoss
+from seq2seq.criterion.nll_loss import NLLLoss
 from seq2seq.inputter.dataset import Dataset
 from seq2seq.inputter.vocab import Vocab
 from seq2seq.model.seq2seq import Seq2Seq
