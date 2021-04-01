@@ -141,21 +141,24 @@ class Vocab:
             json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info("{} dumped to file {}".format(self, filename))
 
-    def from_json(self, filename):
+    @classmethod
+    def from_json(cls, filename):
         if not os.path.isfile(filename):
             raise FileNotFoundError
 
         with open(filename, mode="r") as f:
             data = json.load(f)
-        self.name = data["name"]
-        self.trimmed = data["trimmed"]
-        self.word2index = data["word2index"]
-        # self.index2word = data["index2word"]
-        self.word2count = data["word2count"]
-        self.num_words = data["num_words"]
+        voc = Vocab()
+        voc.name = data["name"]
+        voc.trimmed = data["trimmed"]
+        voc.word2index = data["word2index"]
+        # voc.index2word = data["index2word"]
+        voc.word2count = data["word2count"]
+        voc.num_words = data["num_words"]
 
-        self.index2word = {}
-        for word in self.word2index:
-            self.index2word[self.word2index[word]] = word
+        voc.index2word = {}
+        for word in voc.word2index:
+            voc.index2word[voc.word2index[word]] = word
 
-        logger.info("{} loaded from file {}".format(self, filename))
+        logger.info("{} loaded from file {}".format(voc, filename))
+        return voc

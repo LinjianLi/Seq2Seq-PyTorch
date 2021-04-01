@@ -140,8 +140,7 @@ def get_vocab():
         return create_vocab(vocab_file_eng)
     else:
         logger.info('Loading vocab.')
-        vocab_eng = Vocab("eng")
-        vocab_eng.from_json(vocab_file_eng)
+        vocab_eng = Vocab.from_json(vocab_file_eng)
         logger.info(vocab_eng)
         return vocab_eng
 

@@ -38,9 +38,8 @@ vocab_file_eng = "vocab_eng.json"
 if not os.path.exists(vocab_file_eng):
     raise FileNotFoundError(vocab_file_eng)
 else:
-    vocab_eng = Vocab("eng")
     logger.info('Loading vocab.')
-    vocab_eng.from_json(vocab_file_eng)
+    vocab_eng = Vocab.from_json(vocab_file_eng)
     logger.info(vocab_eng)
 
 logger.info('Preparing data.')

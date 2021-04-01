@@ -41,11 +41,9 @@ if not os.path.exists(vocab_file_eng):
 elif not os.path.exists(vocab_file_fra):
     raise FileNotFoundError(vocab_file_fra)
 else:
-    vocab_eng = Vocab("eng")
-    vocab_fra = Vocab("fra")
     logger.info('Loading vocab.')
-    vocab_eng.from_json(vocab_file_eng)
-    vocab_fra.from_json(vocab_file_fra)
+    vocab_eng = Vocab.from_json(vocab_file_eng)
+    vocab_fra = Vocab.from_json(vocab_file_fra)
     logger.info(vocab_eng)
     logger.info(vocab_fra)
 
