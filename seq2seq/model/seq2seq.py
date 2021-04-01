@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
-from seq2seq.criterion.criterions import NLLLoss
+from seq2seq.criterion.nll_loss import NLLLoss
 from seq2seq.model.base_model import BaseModel
 from seq2seq.inputter.embedder import Embedder
 from seq2seq.module.simple_rnn import SimpleRNN
