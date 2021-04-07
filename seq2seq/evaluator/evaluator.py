@@ -1,6 +1,6 @@
+import torch
 from tqdm import tqdm
 from progress_text import ProgressText
-import torch
 
 class Evaluator(object):
     """docstring for Evaluator"""

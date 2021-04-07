@@ -9,10 +9,10 @@
 File: source/encoders/embedder.py
 """
 
+import logging
 import torch
 import torch.nn as nn
 
-import logging
 
 logger = logging.getLogger(__name__)
 

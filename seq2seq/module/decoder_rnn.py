@@ -3,7 +3,6 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from seq2seq.module.attention import Attention
 
@@ -42,9 +41,10 @@ class DecoderRNN(nn.Module):
         self.batch_first = batch_first
 
         self.attn_mode = attn_mode
+        self.attn_hidden_size = attn_hidden_size
         if isinstance(self.attn_mode, str) and self.attn_mode.lower() == "none":
             self.attn_mode = None
-        self.attn_hidden_size = attn_hidden_size
+            self.attn_hidden_size = -1
 
         self.embedding_dropout_rate = embedding_dropout
         if self.embedding_dropout_rate != 0:
@@ -57,18 +57,18 @@ class DecoderRNN(nn.Module):
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
         self.rnn = self.rnn_cell(input_size=self.input_size,
-                                hidden_size =self.hidden_size,
-                                num_layers =self.num_layers,
+                                hidden_size=self.hidden_size,
+                                num_layers=self.num_layers,
                                 dropout=(self.dropout if self.num_layers > 1 else 0),
                                 bidirectional=False,
                                 batch_first=self.batch_first)
 
         if self.attn_mode is not None:
             self.attn = Attention(query_size=self.hidden_size,
-                                            key_size=self.hidden_size,
-                                            value_size=self.hidden_size,
-                                            hidden_size=self.attn_hidden_size,
-                                            mode=self.attn_mode)
+                                key_size=self.hidden_size,
+                                value_size=self.hidden_size,
+                                hidden_size=self.attn_hidden_size,
+                                mode=self.attn_mode)
             self.linear_concat = nn.Linear(self.hidden_size * 2,
                                             self.hidden_size)
 
@@ -77,9 +77,11 @@ class DecoderRNN(nn.Module):
         self.use_gpu = use_gpu
         if self.use_gpu:
             logger.info("Using GPU")
-            self.cuda()
+            self.device = torch.device("cuda")
         else:
             logger.info("Using CPU")
+            self.device = torch.device("cpu")
+        self.to(self.device)
 
     def forward_step(self,
                      input_step,
@@ -87,7 +89,6 @@ class DecoderRNN(nn.Module):
                      encoder_outputs=None,
                      return_attention=False):
         """
-
         Input:
             input_step: token tensor of shape (batch, seq_len)
 

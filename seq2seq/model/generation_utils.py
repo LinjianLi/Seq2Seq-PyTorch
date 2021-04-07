@@ -19,14 +19,13 @@
 from dataclasses import dataclass, fields
 from typing import Any, Optional, Tuple, Union
 from collections import OrderedDict
+import logging
 
 import torch
 from torch.nn import functional as F
 
 # from .generation_beam_search import BeamScorer, BeamSearchScorer
 from .beam_search_utils import BeamScorer, BeamSearchScorer
-
-import logging
 
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,7 @@
+import logging
 import torch
 import torch.nn as nn
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class Attention(nn.Module):
         main_string += ")"
         return main_string
 
-    def forward(self, query, keys, values=None, mask=None, debug=False):
+    def forward(self, query, keys, values=None, mask=None):
         if self.return_attn_only == False and values == None:
             # I am not sure if I should use `.clone()` or not.
             values = keys#.clone()
@@ -154,10 +155,10 @@ class Attention(nn.Module):
         weights = self.softmax(attn)
 
         if mask is not None:
-            # If some rows (or columns) in mask are all True, then the
-            # corresponding positions in attn will be all `-inf`. After the softmax
-            # function, the corresponding positions in weights will be all `nan`.
-            # This step is to fill the positions of `nan` with zeros.
+        # If some rows (or columns) in mask are all True, then the corresponding
+        # positions in `attn` will be all `-inf`. After the softmax function,
+        # those positions in weights will be all `nan`s.
+        # This step is to fill the positions of `nan` with zeros.
             nan_mask = (weights != weights) # It will be true that (nan != nan).
             weights.masked_fill_(nan_mask, 0)
 

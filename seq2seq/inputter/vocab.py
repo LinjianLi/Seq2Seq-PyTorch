@@ -22,6 +22,39 @@ class Vocab:
         self.word2count = {}
         self.num_words = 4  # Count SOS, EOS, PAD, UNK
 
+    def to_json(self, filename):
+        data = {"name": self.name,
+                "trimmed": self.trimmed,
+                "word2index": self.word2index,
+                # "index2word": self.index2word,
+                "word2count": self.word2count,
+                "num_words": self.num_words}
+        with open(filename, mode="w") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        logger.info("{} dumped to file {}".format(self, filename))
+
+    @classmethod
+    def from_json(cls, filename):
+        if not os.path.isfile(filename):
+            raise FileNotFoundError
+
+        with open(filename, mode="r") as f:
+            data = json.load(f)
+        voc = Vocab()
+        voc.name = data["name"]
+        voc.trimmed = data["trimmed"]
+        voc.word2index = data["word2index"]
+        # voc.index2word = data["index2word"]
+        voc.word2count = data["word2count"]
+        voc.num_words = data["num_words"]
+
+        voc.index2word = {}
+        for word in voc.word2index:
+            voc.index2word[voc.word2index[word]] = word
+
+        logger.info("{} loaded from file {}".format(voc, filename))
+        return voc
+
     def __len__(self):
         return self.num_words
 
@@ -130,35 +163,3 @@ class Vocab:
         sentence = [self.get_word(index) for index in indexes]
         return sentence
 
-    def to_json(self, filename):
-        data = {"name": self.name,
-                "trimmed": self.trimmed,
-                "word2index": self.word2index,
-                # "index2word": self.index2word,
-                "word2count": self.word2count,
-                "num_words": self.num_words}
-        with open(filename, mode="w") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info("{} dumped to file {}".format(self, filename))
-
-    @classmethod
-    def from_json(cls, filename):
-        if not os.path.isfile(filename):
-            raise FileNotFoundError
-
-        with open(filename, mode="r") as f:
-            data = json.load(f)
-        voc = Vocab()
-        voc.name = data["name"]
-        voc.trimmed = data["trimmed"]
-        voc.word2index = data["word2index"]
-        # voc.index2word = data["index2word"]
-        voc.word2count = data["word2count"]
-        voc.num_words = data["num_words"]
-
-        voc.index2word = {}
-        for word in voc.word2index:
-            voc.index2word[voc.word2index[word]] = word
-
-        logger.info("{} loaded from file {}".format(voc, filename))
-        return voc

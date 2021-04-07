@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
-from seq2seq.utility.utilities import *
+
+from seq2seq.utility.utilities import list2tensor
 
 class Pack(dict):
     """

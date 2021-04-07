@@ -1,9 +1,9 @@
 import os
 import time
+import logging
 import json
 import argparse
 import random
-
 import torch
 from torch import optim
 
@@ -15,7 +15,6 @@ from seq2seq.trainer.trainer import Trainer
 
 from prepare_vocab_and_data import get_vocab, get_train_val_data
 
-import logging
 
 logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M.%S', time.gmtime())),
                     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',

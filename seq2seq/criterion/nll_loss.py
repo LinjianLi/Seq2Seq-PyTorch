@@ -8,10 +8,10 @@
 
 # Modified by Linjian Li
 
+import logging
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
 
-import logging
 
 logger = logging.getLogger(__name__)
 

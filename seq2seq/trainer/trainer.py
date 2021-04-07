@@ -1,16 +1,16 @@
 import os
 import logging
 import json
-
 from tqdm import tqdm
 from progress_text import ProgressText
 import torch
 from torch.nn.utils import clip_grad_norm_
-from seq2seq.evaluator.evaluator import Evaluator
-
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+from matplotlib import pyplot
+
+from seq2seq.evaluator.evaluator import Evaluator
+
 
 logger = logging.getLogger(__name__)
 
@@ -171,13 +171,13 @@ class Trainer(object):
         if self.save_path is not None:
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
-        plt.clf() # Clear current figures.
-        plt.plot(self.train_loss_record, label='Train loss')
-        plt.plot(self.valid_loss_record, label='Valid loss')
-        plt.legend() # Show the label of each curve.
-        plt.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
-        plt.ylabel("Loss")
-        plt.savefig(os.path.join(self.save_path, 'train_val_loss_plot.svg'))
+        pyplot.clf() # Clear current figures.
+        pyplot.plot(self.train_loss_record, label='Train loss')
+        pyplot.plot(self.valid_loss_record, label='Valid loss')
+        pyplot.legend() # Show the label of each curve.
+        pyplot.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
+        pyplot.ylabel("Loss")
+        pyplot.savefig(os.path.join(self.save_path, 'train_val_loss_plot.svg'))
 
     def save_best(self):
         logger.info('The best epoch is {}. The best validation loss is {}.'\

@@ -1,8 +1,8 @@
+import logging
+import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class SimpleRNN(nn.Module):
             self.rnn_cell = nn.GRU
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
-        self.rnn = self.rnn_cell(self.input_size,
-                                self.rnn_cell_hidden_size,
-                                self.num_layers,
+        self.rnn = self.rnn_cell(input_size=self.input_size,
+                                hidden_size=self.rnn_cell_hidden_size,
+                                num_layers=self.num_layers,
                                 dropout=(self.dropout if self.num_layers > 1 else 0),
                                 bidirectional=self.bidirectional,
                                 batch_first=self.batch_first)
@@ -60,14 +60,19 @@ class SimpleRNN(nn.Module):
         self.use_gpu = use_gpu
         if self.use_gpu:
             logger.info("Using GPU")
-            self.cuda()
+            self.device = torch.device("cuda")
         else:
             logger.info("Using CPU")
+            self.device = torch.device("cpu")
+        self.to(self.device)
 
-    def forward(self, token_seqs, input_lengths=None, hidden=None):
+    def forward(self,
+                inputs,
+                input_lengths=None,
+                hidden=None):
         """
         Input:
-            token_seqs: Tensor(batch, seq_lens)
+            inputs: Tensor(batch, seq_lens)
             input_lengths: Tensor(batch)
 
         Output:
@@ -78,9 +83,9 @@ class SimpleRNN(nn.Module):
 
         if self.embedder is not None:
             # Embedding.
-            inputs = self.embedder(token_seqs)
+            inputs = self.embedder(inputs)
         else:
-            inputs = token_seqs
+            inputs = inputs
 
         if input_lengths is not None:
             # Sort according to the lengths.

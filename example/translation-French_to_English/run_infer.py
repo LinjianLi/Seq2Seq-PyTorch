@@ -1,15 +1,14 @@
 import os
 import time
+import logging
 import json
 import argparse
 from tqdm import tqdm
-
 import torch
 
 from seq2seq.inputter.vocab import Vocab
 from seq2seq.model.seq2seq import Seq2Seq
 
-import logging
 
 logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M.%S', time.gmtime())),
                     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',

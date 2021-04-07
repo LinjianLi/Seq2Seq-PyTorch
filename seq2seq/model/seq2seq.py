@@ -8,6 +8,7 @@
 
 # Modified by Linjian Li
 
+import logging
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
@@ -20,7 +21,6 @@ from seq2seq.module.decoder_rnn import DecoderRNN
 from seq2seq.model.beam_search_utils import BeamSearchScorer
 from seq2seq.model.generation_utils import GenerationMixin
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
                 logger.error("Swich use_gpu=False")
                 self.use_gpu=False
         if self.use_gpu:
+            logger.info("Using GPU")
             self.device = torch.device("cuda")
         else:
             logger.info("Using CPU")
@@ -93,7 +94,6 @@ class Seq2Seq(BaseModel, GenerationMixin):
         enc_embedder = Embedder(num_embeddings=self.src_vocab_size,
                                 embedding_dim=self.embed_size,
                                 padding_idx=self.padding_idx)
-
 
         self.encoder = SimpleRNN(input_size=self.embed_size,
                                  hidden_size=self.hidden_size,
@@ -155,7 +155,10 @@ class Seq2Seq(BaseModel, GenerationMixin):
             enc_hidden = self.bridge(enc_hidden)
         return enc_outputs, enc_hidden
 
-    def forward(self, inputs, hidden=None, is_training=True):
+    def forward(self,
+                inputs,
+                hidden=None,
+                is_training=True):
         """
         forward
         """
@@ -165,26 +168,33 @@ class Seq2Seq(BaseModel, GenerationMixin):
         # Target does not include SOS token. Need to add SOS.
         # And need to remove the last token to maintain the length.
         dec_inputs = torch.cat(
-            (torch.ones(
-                (len(dec_inputs), 1),
-                dtype=torch.long,
-                device=dec_inputs.device
-            ) * self.start_token,
-            dec_inputs),
-            dim=-1
-        )[:, :-1]
-        # decoder_output_tokens, decoder_outputs, hidden\
-        dec_output_dict\
-            = self.decoder(inputs=dec_inputs,
-                           hidden=enc_hidden,
-                           lengths=dec_input_lengths,
-                           encoder_outputs=enc_outputs,
-                           teacher_forcing_ratio=self.teacher_forcing_ratio,
-                           return_tokens=(not is_training))
-        # return decoder_outputs
-        return dec_output_dict["outputs"]
+                        (torch.ones(
+                            (len(dec_inputs), 1),
+                            dtype=torch.long,
+                            device=dec_inputs.device
+                        ) * self.start_token,
+                        dec_inputs),
+                        dim=-1
+                    )[:, :-1]
+        dec_output_dict = self.decoder(
+                                inputs=dec_inputs,
+                                hidden=enc_hidden,
+                                lengths=dec_input_lengths,
+                                encoder_outputs=enc_outputs,
+                                teacher_forcing_ratio=self.teacher_forcing_ratio,
+                                return_tokens=(not is_training)
+                            )
+        # decoder_output_tokens = dec_output_dict["decoded_tokens"]
+        decoder_outputs = dec_output_dict["outputs"]
+        # decoder_last_hidden = dec_output_dict["last_hidden_state"]
+        # decoder_attention_weights = dec_output_dict["attention_weights"]
+        return decoder_outputs
 
-    def infer(self, input, max_length: int=20, mode: str="greedy", beam_width: int=-1):
+    def infer(self,
+                input,
+                max_length: int=20,
+                mode: str="greedy",
+                beam_width: int=-1):
         assert isinstance(mode, str)
         mode = mode.lower()
         assert mode in ("greedy", "beam")
