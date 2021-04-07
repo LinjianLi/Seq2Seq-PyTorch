@@ -29,6 +29,7 @@ See [example](./example/translation%20-%20French%20to%20English)
 
 - `Trainer` supports [gradient accumulation](https://ai.stackexchange.com/questions/21972/what-is-the-relationship-between-gradient-accumulation-and-batch-size) which enables larger (equivalent) batch size although with limited memory.
 - Supports beam search by reusing the code from the [Transformers library of the HuggingFace Inc. team](https://github.com/huggingface/transformers).
+- Attention mechanism. I use the [Luong attention mechanism](https://arxiv.org/abs/1508.04025) instead of the [Bahdanau attention mechanism](https://arxiv.org/abs/1409.0473). When computing the attention at time step `t`, the former uses the hidden state from the time step `t` while the latter uses the hidden state from the time step `t-1`.
 
 ## To Do
 

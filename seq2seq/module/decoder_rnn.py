@@ -119,11 +119,14 @@ class DecoderRNN(nn.Module):
         # rnn_output.shape: (batch_size, seq_len, hidden_size)
         rnn_output, hidden = self.rnn(inputs, last_hidden)
 
+        # The type of attention mechanism used here is Luong attention (Luong, 2015).
+        # The Luong attention at time step `t` is computed using only the hidden state
+        # of the time step `t`, instead of using the hidden state of the time step `t-1`
+        # which is the Bahdanau attention (Bahdanau, 2015).
         if self.attn_mode is not None:
             # Calculate the attention.
             attn_weighted_sum, attn_weights\
                 = self.attn(query=rnn_output, keys=encoder_outputs)
-            # Use attention output according to (Luong, 2015).
             cat = torch.cat((rnn_output, attn_weighted_sum), dim=-1)
             cat = torch.tanh(self.linear_concat(cat))
             h_tilde = self.out(cat)   # (batch_size, seq_len, output_size)
