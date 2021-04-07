@@ -11,18 +11,18 @@ logger = logging.getLogger(__name__)
 
 class DecoderRNN(nn.Module):
     def __init__(self,
-                 input_size,
-                 hidden_size,
-                 output_size,
+                 input_size: int,
+                 hidden_size: int,
+                 output_size: int,
                  embedder=None,
-                 num_layers=1,
-                 dropout=0,
-                 embedding_dropout=0,
-                 rnn_cell='gru',
-                 batch_first=True,
-                 attn_mode=None,
-                 attn_hidden_size=-1,
-                 use_gpu=False):
+                 num_layers: int=1,
+                 dropout: float=0.0,
+                 embedding_dropout: float=0.0,
+                 rnn_cell: str='gru',
+                 batch_first: bool=True,
+                 attn_mode: bool=None,
+                 attn_hidden_size: int=-1,
+                 use_gpu: bool=False):
 
         super(DecoderRNN, self).__init__()
 
@@ -160,7 +160,7 @@ class DecoderRNN(nn.Module):
                 encoder_outputs=None,
                 max_length: int=-1,
                 teacher_forcing_ratio: float=0.0,
-                return_tokens: bool=True,
+                return_tokens: bool=False,
                 return_attention: bool=False):
         """
         The forward process is greedy, that is, only consider the token with 

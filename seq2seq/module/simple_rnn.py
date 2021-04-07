@@ -8,15 +8,15 @@ logger = logging.getLogger(__name__)
 
 class SimpleRNN(nn.Module):
     def __init__(self,
-                input_size,
-                hidden_size,
-                num_layers=1,
-                dropout=0,
+                input_size: int,
+                hidden_size: int,
+                num_layers: int=1,
+                dropout: float=0,
                 embedder=None,
-                rnn_cell='gru',
-                bidirectional=False,
-                batch_first=True,
-                use_gpu=False):
+                rnn_cell: str='gru',
+                bidirectional: bool=False,
+                batch_first: bool=True,
+                use_gpu: bool=False):
         super(SimpleRNN, self).__init__()
 
         if not batch_first:

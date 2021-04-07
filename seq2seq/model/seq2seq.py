@@ -37,24 +37,24 @@ class Seq2Seq(BaseModel, GenerationMixin):
     Seq2Seq
     """
     def __init__(self,
-                 src_vocab_size,
-                 tgt_vocab_size,
-                 embed_size,
-                 hidden_size,
-                 start_token=1,
-                 end_token=2,
+                 src_vocab_size: int,
+                 tgt_vocab_size: int,
+                 embed_size: int,
+                 hidden_size: int,
+                 start_token: int=1,
+                 end_token: int=2,
                  padding_idx=None,
-                 batch_first=True,
-                 num_layers=1,
-                 bidirectional=True,
+                 batch_first: bool=True,
+                 num_layers: int=1,
+                 bidirectional: bool=False,
                  attn_mode=None,
                  attn_hidden_size=None,
-                 with_bridge=False,
-                 tie_embedding=False,
-                 dropout=0.0,
-                 rnn_cell='gru',
-                 teacher_forcing_ratio=0,
-                 use_gpu=False):
+                 with_bridge: bool=False,
+                 tie_embedding: bool=False,
+                 dropout: float=0.0,
+                 rnn_cell: str='gru',
+                 teacher_forcing_ratio: float=0.0,
+                 use_gpu: bool=False):
         super(Seq2Seq, self).__init__()
 
         if not batch_first:
@@ -131,17 +131,6 @@ class Seq2Seq(BaseModel, GenerationMixin):
                                   batch_first=self.batch_first,
                                   use_gpu=self.use_gpu)
 
-        # TODO: The loss definition block maybe no longer needed. Delete it if so.
-        # Loss Definition
-        if self.padding_idx is not None:
-            weight = torch.ones(self.tgt_vocab_size)
-            weight[self.padding_idx] = 0
-        else:
-            weight = None
-        self.nll_loss = NLLLoss(weight=weight,
-                                ignore_index=self.padding_idx,
-                                reduction='mean')
-
         logger.debug(self)
 
     def encode(self, inputs, hidden=None):
@@ -158,7 +147,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
     def forward(self,
                 inputs,
                 hidden=None,
-                is_training=True):
+                is_training: bool=True):
         """
         forward
         """

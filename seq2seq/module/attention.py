@@ -23,13 +23,13 @@ class Attention(nn.Module):
     """
 
     def __init__(self,
-                 query_size,
+                 query_size: int,
                  key_size=None,
                  value_size=None,
                  hidden_size=None,
-                 mode="scaled-dot",
-                 return_attn_only=False,
-                 project=False):
+                 mode: str="scaled-dot",
+                 return_attn_only: bool=False,
+                 project: bool=False):
         super(Attention, self).__init__()
         assert (
             mode in (
