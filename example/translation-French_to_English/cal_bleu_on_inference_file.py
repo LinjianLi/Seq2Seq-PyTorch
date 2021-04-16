@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", default="./inference.txt", type=str)
 args = parser.parse_args()
 
+
 def cal_bleu(file):
     logger.info(file)
     with open(file, "r") as f:
@@ -30,6 +31,7 @@ def cal_bleu(file):
                         .format(corpus_bleu(references, candidates, weights=[1/2, 1/2, 0, 0]) * 100))
         logger.info("Corpus (1 Gram) BLEU*100: {}"\
                         .format(corpus_bleu(references, candidates, weights=[1, 0, 0, 0]) * 100))
+
 
 if __name__ == "__main__":
     cal_bleu(args.file)

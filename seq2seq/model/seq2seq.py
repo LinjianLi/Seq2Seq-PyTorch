@@ -13,7 +13,6 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
-from seq2seq.criterion.nll_loss import NLLLoss
 from seq2seq.model.base_model import BaseModel
 from seq2seq.inputter.embedder import Embedder
 from seq2seq.module.simple_rnn import SimpleRNN
@@ -21,8 +20,8 @@ from seq2seq.module.decoder_rnn import DecoderRNN
 from seq2seq.model.beam_search_utils import BeamSearchScorer
 from seq2seq.model.generation_utils import GenerationMixin
 
-
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Config:
@@ -32,29 +31,31 @@ class Config:
     pad_token_id = -1
     eos_token_id = -1
 
+
 class Seq2Seq(BaseModel, GenerationMixin):
     """
     Seq2Seq
     """
+
     def __init__(self,
                  src_vocab_size: int,
                  tgt_vocab_size: int,
                  embed_size: int,
                  hidden_size: int,
-                 start_token: int=1,
-                 end_token: int=2,
+                 start_token: int = 1,
+                 end_token: int = 2,
                  padding_idx=None,
-                 batch_first: bool=True,
-                 num_layers: int=1,
-                 bidirectional: bool=False,
+                 batch_first: bool = True,
+                 num_layers: int = 1,
+                 bidirectional: bool = False,
                  attn_mode=None,
                  attn_hidden_size=None,
-                 with_bridge: bool=False,
-                 tie_embedding: bool=False,
-                 dropout: float=0.0,
-                 rnn_cell: str='gru',
-                 teacher_forcing_ratio: float=0.0,
-                 use_gpu: bool=False):
+                 with_bridge: bool = False,
+                 tie_embedding: bool = False,
+                 dropout: float = 0.0,
+                 rnn_cell: str = 'gru',
+                 teacher_forcing_ratio: float = 0.0,
+                 use_gpu: bool = False):
         super(Seq2Seq, self).__init__()
 
         if not batch_first:
@@ -80,9 +81,9 @@ class Seq2Seq(BaseModel, GenerationMixin):
 
         self.use_gpu = use_gpu
         if self.use_gpu and (not torch.cuda.is_available()):
-                logger.error("Passing argument use_gpu=True but torch.cuda.is_available()==False")
-                logger.error("Swich use_gpu=False")
-                self.use_gpu=False
+            logger.error("Passing argument use_gpu=True but torch.cuda.is_available()==False")
+            logger.error("Switch use_gpu=False")
+            self.use_gpu = False
         if self.use_gpu:
             logger.info("Using GPU")
             self.device = torch.device("cuda")
@@ -137,7 +138,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
         """
         encode
         """
-        enc_inputs, enc_input_lengths = inputs #inputs["inputs"], inputs["lengths"]
+        enc_inputs, enc_input_lengths = inputs  # inputs["inputs"], inputs["lengths"]
         enc_output_dict = self.encoder(enc_inputs, enc_input_lengths, hidden)
         enc_outputs, enc_hidden = enc_output_dict["outputs"], enc_output_dict["last_hidden_state"]
         if self.with_bridge:
@@ -147,7 +148,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
     def forward(self,
                 inputs,
                 hidden=None,
-                is_training: bool=True):
+                is_training: bool = True):
         """
         forward
         """
@@ -157,22 +158,24 @@ class Seq2Seq(BaseModel, GenerationMixin):
         # Target does not include SOS token. Need to add SOS.
         # And need to remove the last token to maintain the length.
         dec_inputs = torch.cat(
-                        (torch.ones(
-                            (len(dec_inputs), 1),
-                            dtype=torch.long,
-                            device=dec_inputs.device
-                        ) * self.start_token,
-                        dec_inputs),
-                        dim=-1
-                    )[:, :-1]
+            (
+                torch.ones(
+                    (len(dec_inputs), 1),
+                    dtype=torch.long,
+                    device=dec_inputs.device
+                ) * self.start_token,
+                dec_inputs
+            ),
+            dim=-1
+        )[:, :-1]
         dec_output_dict = self.decoder(
-                                inputs=dec_inputs,
-                                hidden=enc_hidden,
-                                lengths=dec_input_lengths,
-                                encoder_outputs=enc_outputs,
-                                teacher_forcing_ratio=self.teacher_forcing_ratio,
-                                return_tokens=(not is_training)
-                            )
+            inputs=dec_inputs,
+            hidden=enc_hidden,
+            lengths=dec_input_lengths,
+            encoder_outputs=enc_outputs,
+            teacher_forcing_ratio=self.teacher_forcing_ratio,
+            return_tokens=(not is_training)
+        )
         # decoder_output_tokens = dec_output_dict["decoded_tokens"]
         decoder_outputs = dec_output_dict["outputs"]
         # decoder_last_hidden = dec_output_dict["last_hidden_state"]
@@ -180,10 +183,10 @@ class Seq2Seq(BaseModel, GenerationMixin):
         return decoder_outputs
 
     def infer(self,
-                input,
-                max_length: int=20,
-                mode: str="greedy",
-                beam_width: int=-1):
+              input,
+              max_length: int = 20,
+              mode: str = "greedy",
+              beam_width: int = -1):
         assert isinstance(mode, str)
         mode = mode.lower()
         assert mode in ("greedy", "beam")
@@ -203,8 +206,8 @@ class Seq2Seq(BaseModel, GenerationMixin):
 
         self.eval()
         with torch.no_grad():
-            enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
-            enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
+            enc_inputs = torch.tensor(input, dtype=torch.long)  # shape: (seq_len)
+            enc_inputs = enc_inputs.unsqueeze(0)  # shape: (1, seq_len)
             enc_inputs = enc_inputs.to(self.device)
             enc_inputs = (enc_inputs, None)
 
@@ -220,12 +223,12 @@ class Seq2Seq(BaseModel, GenerationMixin):
                                            max_length=max_length,
                                            teacher_forcing_ratio=0,
                                            return_tokens=True)
-            decoder_output_tokens = dec_output_dict["decoded_tokens"].squeeze(0).tolist() # shape: (seq_len)
+            decoder_output_tokens = dec_output_dict["decoded_tokens"].squeeze(0).tolist()  # shape: (seq_len)
 
             # Discard the content after the first end_token.
             for i in range(len(decoder_output_tokens)):
                 if decoder_output_tokens[i] == self.end_token:
-                    decoder_output_tokens = decoder_output_tokens[:i+1]
+                    decoder_output_tokens = decoder_output_tokens[:i + 1]
                     break
             return decoder_output_tokens
 
@@ -251,14 +254,14 @@ class Seq2Seq(BaseModel, GenerationMixin):
 
         self.eval()
         with torch.no_grad():
-            enc_inputs = torch.tensor(input, dtype=torch.long) # shape: (seq_len)
-            enc_inputs = enc_inputs.unsqueeze(0) # shape: (1, seq_len)
+            enc_inputs = torch.tensor(input, dtype=torch.long)  # shape: (seq_len)
+            enc_inputs = enc_inputs.unsqueeze(0)  # shape: (1, seq_len)
             enc_inputs = enc_inputs.to(self.device)
             enc_inputs = (enc_inputs, None)
 
             dec_inputs = torch.ones((batch_size * beam_width, 1),
-                                     device=self.device,
-                                     dtype=torch.long)
+                                    device=self.device,
+                                    dtype=torch.long)
             dec_inputs = dec_inputs * self.start_token
             dec_inputs = dec_inputs.to(self.device)
 
@@ -271,7 +274,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
                     "hidden_states":
                         enc_outputs.repeat_interleave(beam_width, dim=0),
                     "last_hidden_state":
-                        # Last hidden state is not batch first.
+                    # Last hidden state is not batch first.
                         enc_hidden.repeat_interleave(beam_width, dim=1)
                 }
             }
@@ -301,7 +304,8 @@ class Seq2Seq(BaseModel, GenerationMixin):
                                        **model_kwargs)
 
             sequences, sequences_scores = outputs.sequences, outputs.sequences_scores
-            sequences = sequences[:, 1:]  # Remove the <SOS> token. `GenerationMixin.beam_search()` does not exclude <SOS> token.
+            # Remove the <SOS> token. `GenerationMixin.beam_search()` does not exclude <SOS> token.
+            sequences = sequences[:, 1:]
             sequences, sequences_scores = sequences.tolist(), sequences_scores.tolist()
             sequences, sequences_scores = sequences[0], sequences_scores[0]
 
@@ -309,6 +313,6 @@ class Seq2Seq(BaseModel, GenerationMixin):
             # `max_length - 1` because of the removal of the start token.
             for i in range(max_length - 1):
                 if sequences[i] == self.end_token:
-                    sequences = sequences[:i+1]
+                    sequences = sequences[:i + 1]
                     break
-            return sequences#, sequences_scores
+            return sequences  # , sequences_scores

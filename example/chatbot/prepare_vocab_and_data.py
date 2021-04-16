@@ -11,28 +11,31 @@ from seq2seq.inputter.vocab import Vocab
 logger = logging.getLogger(__name__)
 
 
-#----------------------------------------------------------
+# ----------------------------------------------------------
 # https://pytorch.org/tutorials/beginner/chatbot_tutorial.html
 # Since there are a lot of example sentences and we want to train something quickly,
 # we’ll trim the data set to only relatively short and simple sentences.
 
 MAX_LENGTH = 15
 
+
 def normalize_str(s):
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
     s = re.sub(r"\s+", r" ", s).strip()
     return s
+
 
 def normalizePair(p):
     p = [normalize_str(s) for s in p]
     p = [s.lower() for s in p]
     return p
 
+
 def pair_is_simple(p):
     return (len(p[0].split(' ')) < MAX_LENGTH \
             and \
             len(p[1].split(' ')) < MAX_LENGTH)
-#----------------------------------------------------------
+# ----------------------------------------------------------
 
 
 def create_formatted_data_file():
@@ -144,6 +147,7 @@ def get_vocab():
         logger.info(vocab_eng)
         return vocab_eng
 
+
 def prepare_data(data_path, vocab_eng):
     data_ids = []
     with open(data_path, "r", encoding="utf-8") as f:
@@ -156,6 +160,7 @@ def prepare_data(data_path, vocab_eng):
             data_ids.append({"input": vocab_eng.indexes_from_sentence(inp, add_eos=True),
                              "target": vocab_eng.indexes_from_sentence(tgt, add_eos=True)})
     return data_ids
+
 
 def get_train_val_data(data_file="./data/cornell movie-dialogs corpus/formatted_movie_lines.txt", vocab_eng=None):
     logger.info('Preparing data.')
@@ -181,6 +186,7 @@ def get_train_val_data(data_file="./data/cornell movie-dialogs corpus/formatted_
         with open(test_data_path, "r", encoding="utf-8") as f:
             test_data = json.load(f)
     return (train_data, val_data, test_data)
+
 
 if __name__ == "__main__":
     create_formatted_data_file()

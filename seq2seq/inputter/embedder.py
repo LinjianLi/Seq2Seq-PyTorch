@@ -16,6 +16,7 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
+
 class Embedder(nn.Embedding):
     """
     Embedder
@@ -35,6 +36,6 @@ class Embedder(nn.Embedding):
             else:
                 num_known += 1
         self.weight.data.copy_(embeds)
-        logger.info("{} words have pretrained embeddings"\
-                    " (coverage: {:.3f})"\
-                        .format(num_known, num_known / self.num_embeddings))
+        logger.info("{} words have pretrained embeddings"
+                    " (coverage: {:.3f})".format(
+                        num_known, num_known / self.num_embeddings))

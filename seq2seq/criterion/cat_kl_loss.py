@@ -9,6 +9,7 @@
 import torch
 from torch.nn.modules.loss import _Loss
 
+
 class CatKLLoss(_Loss):
     """
     CatKLLoss

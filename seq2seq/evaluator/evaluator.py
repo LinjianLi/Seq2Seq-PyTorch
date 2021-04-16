@@ -2,28 +2,29 @@ import torch
 from tqdm import tqdm
 from progress_text import ProgressText
 
+
 class Evaluator(object):
     """docstring for Evaluator"""
     def __init__(self,
                  loss_fn,
-                 dataloder):
+                 dataloader):
         super(Evaluator, self).__init__()
         self.loss_fn = loss_fn
-        self.dataloder = dataloder
+        self.dataloader = dataloader
 
     def __repr__(self):
-        main_string = "Evaluator(loss_fn={}, dataloder=(batch_size={}, len={}))"\
-                        .format(self.loss_fn, self.dataloder.batch_size, len(self.dataloder))
+        main_string = "Evaluator(loss_fn={}, dataloader=(batch_size={}, len={}))"\
+                        .format(self.loss_fn, self.dataloader.batch_size, len(self.dataloader))
         return main_string
 
     def eval(self, model, progress_indicator="progress-text"):
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.dataloder, task_name="Evaluation")
+            wrapped_iterable = ProgressText(self.dataloader, task_name="Evaluation")
         elif progress_indicator == "tqdm":
-            wrapped_iterable = tqdm(self.dataloder)
+            wrapped_iterable = tqdm(self.dataloader)
             wrapped_iterable.set_description("Evaluation")
         else:
-            wrapped_iterable = self.dataloder
+            wrapped_iterable = self.dataloader
 
         losses = []
         model.eval()

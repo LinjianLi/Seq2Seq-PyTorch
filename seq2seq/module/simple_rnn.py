@@ -6,22 +6,22 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 logger = logging.getLogger(__name__)
 
+
 class SimpleRNN(nn.Module):
     def __init__(self,
-                input_size: int,
-                hidden_size: int,
-                num_layers: int=1,
-                dropout: float=0,
-                embedder=None,
-                rnn_cell: str='gru',
-                bidirectional: bool=False,
-                batch_first: bool=True,
-                use_gpu: bool=False):
+                 input_size: int,
+                 hidden_size: int,
+                 num_layers: int = 1,
+                 dropout: float = 0,
+                 embedder=None,
+                 rnn_cell: str = 'gru',
+                 bidirectional: bool = False,
+                 batch_first: bool = True,
+                 use_gpu: bool = False):
         super(SimpleRNN, self).__init__()
 
         if not batch_first:
-            raise NotImplementedError(
-                'Sorry, this module supports batch first mode only.')
+            raise NotImplementedError('Sorry, this module supports batch first mode only.')
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -51,11 +51,11 @@ class SimpleRNN(nn.Module):
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
         self.rnn = self.rnn_cell(input_size=self.input_size,
-                                hidden_size=self.rnn_cell_hidden_size,
-                                num_layers=self.num_layers,
-                                dropout=(self.dropout if self.num_layers > 1 else 0),
-                                bidirectional=self.bidirectional,
-                                batch_first=self.batch_first)
+                                 hidden_size=self.rnn_cell_hidden_size,
+                                 num_layers=self.num_layers,
+                                 dropout=(self.dropout if self.num_layers > 1 else 0),
+                                 bidirectional=self.bidirectional,
+                                 batch_first=self.batch_first)
 
         self.use_gpu = use_gpu
         if self.use_gpu:
@@ -75,11 +75,12 @@ class SimpleRNN(nn.Module):
             inputs: Tensor(batch, seq_lens)
             input_lengths: Tensor(batch)
 
-        Output:
-            output: Tensor(batch, seq_len, num_directions * hidden_size)
-            hidden: Tensor(num_layers * num_directions, batch_size, hidden_size)
+        Output: dict {
+            "outputs": Tensor(batch, seq_len, num_directions * hidden_size)
+            "last_hidden_state": Tensor(num_layers * num_directions, batch_size, hidden_size)
+        }
         """
-        batch_dim = 0 if self.batch_first == True else 1
+        batch_dim = 0 if self.batch_first else 1
 
         if self.embedder is not None:
             # Embedding.
@@ -93,9 +94,9 @@ class SimpleRNN(nn.Module):
             inputs = inputs.index_select(batch_dim, indices)
             # Pack padded batch of sequences for RNN module
             inputs = pack_padded_sequence(
-                        inputs,
-                        sorted_lengths,
-                        batch_first=self.batch_first)
+                inputs,
+                sorted_lengths,
+                batch_first=self.batch_first)
             if hidden is not None:
                 # Hidden states are always not batch-first.
                 hidden = hidden.index_select(dim=1, index=indices)
@@ -130,5 +131,5 @@ class SimpleRNN(nn.Module):
         """
         num_layers = hidden.size(0) // 2
         _, batch_size, hidden_size = hidden.size()
-        return hidden.view(num_layers, 2, batch_size, hidden_size)\
+        return hidden.view(num_layers, 2, batch_size, hidden_size) \
             .transpose(1, 2).contiguous().view(num_layers, batch_size, hidden_size * 2)

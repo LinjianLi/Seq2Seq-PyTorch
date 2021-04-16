@@ -29,7 +29,7 @@
 "scheduler": "StepLR",
 "scheduler_step_size": 80,
 "scheduler_gamma": 1e-1,
-"num_epoches": 100,
+"num_epochs": 100,
 "early_stop_num": -1,
 "save_every_epoch": 25,
 "plot_loss_group_by": "Update",

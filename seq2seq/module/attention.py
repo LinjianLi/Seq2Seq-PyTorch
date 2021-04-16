@@ -5,6 +5,7 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
+
 class Attention(nn.Module):
     """
     Attention
@@ -27,9 +28,9 @@ class Attention(nn.Module):
                  key_size=None,
                  value_size=None,
                  hidden_size=None,
-                 mode: str="scaled-dot",
-                 return_attn_only: bool=False,
-                 project: bool=False):
+                 mode: str = "scaled-dot",
+                 return_attn_only: bool = False,
+                 project: bool = False):
         super(Attention, self).__init__()
         assert (
             mode in (
@@ -92,16 +93,18 @@ class Attention(nn.Module):
         return main_string
 
     def forward(self, query, keys, values=None, mask=None):
-        if self.return_attn_only == False and values == None:
+        if (not self.return_attn_only) and (values is None):
             # I am not sure if I should use `.clone()` or not.
-            values = keys#.clone()
+            values = keys
 
         if self.mode == "dot" or self.mode == "scaled-dot":
             if query.size(-1) != keys.size(-1):
-                raise Exception("Attention of dot mode expects the query and"
-                                "the key to have the same size of the last"
-                                "dimension! But receives {} and {}."\
-                                    .format(query.size(-1), keys.size(-1)))
+                raise Exception(
+                    "Attention of dot mode expects the query and"
+                    "the key to have the same size of the last"
+                    "dimension! But receives {} and {}.".format(
+                        query.size(-1), keys.size(-1))
+                )
             # (batch_size, query_length, key_length)
             attn = torch.bmm(query, keys.transpose(1, 2))
             if self.mode == "scaled-dot":
@@ -109,9 +112,11 @@ class Attention(nn.Module):
 
         elif self.mode == "general":
             if self.key_size != keys.size(-1):
-                raise Exception("Expected key size ({}) and "
-                                "actural key size ({}) do not match!"\
-                                    .format(self.key_size, keys.size(-1)))
+                raise Exception(
+                    "Expected key size ({}) and "
+                    "actual key size ({}) do not match!".format(
+                        self.key_size, keys.size(-1))
+                )
             # (batch_size, query_length, key_size)
             query_linear_to_key_size = self.linear_query(query)
             # (batch_size, query_length, key_length)
@@ -119,9 +124,11 @@ class Attention(nn.Module):
 
         elif self.mode == "concat":
             if self.key_size != keys.size(-1):
-                raise Exception("Expected key size ({}) and "
-                                "actural key size ({}) do not match!"\
-                                    .format(self.key_size, keys.size(-1)))
+                raise Exception(
+                    "Expected key size ({}) and "
+                    "actual key size ({}) do not match!".format(
+                        self.key_size, keys.size(-1))
+                )
             num_queries, num_keys = query.size(1), keys.size(1)
             query = query.unsqueeze(2).expand(-1, -1, num_keys, -1)
             keys = keys.unsqueeze(1).expand(-1, num_queries, -1, -1)
@@ -155,11 +162,11 @@ class Attention(nn.Module):
         weights = self.softmax(attn)
 
         if mask is not None:
-        # If some rows (or columns) in mask are all True, then the corresponding
-        # positions in `attn` will be all `-inf`. After the softmax function,
-        # those positions in weights will be all `nan`s.
-        # This step is to fill the positions of `nan` with zeros.
-            nan_mask = (weights != weights) # It will be true that (nan != nan).
+            # If some rows (or columns) in mask are all True, then the corresponding
+            # positions in `attn` will be all `-inf`. After the softmax function,
+            # those positions in weights will be all `nan`s.
+            # This step is to fill the positions of `nan` with zeros.
+            nan_mask = (weights != weights)  # It will be true that (nan != nan).
             weights.masked_fill_(nan_mask, 0)
 
         if self.return_attn_only:

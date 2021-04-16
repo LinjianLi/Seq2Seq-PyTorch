@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="seq2seq-pytorch", # Replace with your own package name
+    name="seq2seq-pytorch",  # Replace with your own package name
     version="0.0.1",
     author="Linjian Li",
     author_email="author@example.com",

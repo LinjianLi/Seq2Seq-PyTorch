@@ -11,6 +11,7 @@ SOS_token = 1  # Start-of-sentence token
 EOS_token = 2  # End-of-sentence token
 UNK_token = 3  # Unknown token
 
+
 class Vocab:
     def __init__(self, name="unnamed"):
         self.name = name
@@ -110,8 +111,10 @@ class Vocab:
             if v >= min_count:
                 keep_words.append((k, v))
 
-        logger.info('keep_words {} / {} = {:.4f}'\
-                        .format(len(keep_words), len(self.word2index), len(keep_words) / len(self.word2index)))
+        logger.info('keep_words {} / {} = {:.4f}'.format(
+                        len(keep_words),
+                        len(self.word2index),
+                        len(keep_words) / len(self.word2index)))
 
         # Reinitialize dictionaries
         self.word2index = {"<PAD>": PAD_token, "<SOS>": SOS_token,
@@ -131,8 +134,10 @@ class Vocab:
         sorted_word_count.sort(key=lambda w_c: w_c[1], reverse=True)
         sorted_word_count = sorted_word_count[0:k]
 
-        logger.info('keep_words {} / {} = {:.4f}'\
-                        .format(len(sorted_word_count), len(self.word2index), len(sorted_word_count) / len(self.word2index)))
+        logger.info('keep_words {} / {} = {:.4f}'.format(
+                        len(sorted_word_count),
+                        len(self.word2index),
+                        len(sorted_word_count) / len(self.word2index)))
 
         # Reinitialize dictionaries
         self.word2index = {"<PAD>": PAD_token, "<SOS>": SOS_token,
@@ -162,4 +167,3 @@ class Vocab:
         assert isinstance(indexes[0], int)
         sentence = [self.get_word(index) for index in indexes]
         return sentence
-

@@ -1,5 +1,6 @@
 import torch
 
+
 def max_lens(X):
     """
     max_lens
@@ -13,10 +14,11 @@ def max_lens(X):
         return tuple([len(X), max(len(x) for x in X)])
     elif not isinstance(X[0][0][0], list):
         return tuple([len(X), max(len(x) for x in X),
-                        max(len(x) for xs in X for x in xs)])
+                      max(len(x) for xs in X for x in xs)])
     else:
         raise ValueError(
             "Data list whose dim is greater than 3 is not supported!")
+
 
 def shape_fit(X):
     """
@@ -25,12 +27,13 @@ def shape_fit(X):
     """
     return max_lens(X)
 
+
 def seq_mask_from_lens(lengths, max_len=None):
     """
     Creates a boolean mask from sequence lengths.
     If the `lengths` is of shape (...), the `mask` is of shape (..., max_len).
     The last dimension is of shape (max_len) and consisting of consecutive
-    `True`s and `False`s. The number of `True`s is dicided by the number in
+    `True`s and `False`s. The number of `True`s is decided by the number in
     the `lengths`.
 
     lengths: tensor containing the lengths of sequences
@@ -43,6 +46,7 @@ def seq_mask_from_lens(lengths, max_len=None):
     mask = mask.repeat(*lengths.size(), 1)
     mask = mask.lt(lengths.unsqueeze(-1))
     return mask
+
 
 def list2tensor(X):
     """
@@ -66,14 +70,14 @@ def list2tensor(X):
     lengths = torch.zeros(size[:-1], dtype=torch.long)
     if len(size) == 2:  # 2 dimensional list
         for i, x in enumerate(X):
-            l = len(x)
-            tensor[i, :l] = torch.tensor(x)
-            lengths[i] = l
+            length = len(x)
+            tensor[i, :length] = torch.tensor(x)
+            lengths[i] = length
     else:  # 3 dimensional list
         for i, xs in enumerate(X):
             for j, x in enumerate(xs):
-                l = len(x)
-                tensor[i, j, :l] = torch.tensor(x)
-                lengths[i, j] = l
+                length = len(x)
+                tensor[i, j, :length] = torch.tensor(x)
+                lengths[i, j] = length
 
     return tensor, lengths

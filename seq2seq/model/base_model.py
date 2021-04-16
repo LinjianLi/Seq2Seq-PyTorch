@@ -31,7 +31,8 @@ class BaseModel(nn.Module):
         table = PrettyTable(["Modules", "Parameters"])
         total_params = 0
         for name, parameter in self.named_parameters():
-            if not parameter.requires_grad: continue
+            if not parameter.requires_grad:
+                continue
             num_param = parameter.numel()
             table.add_row([name, num_param])
             total_params += num_param

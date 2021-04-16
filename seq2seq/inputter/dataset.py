@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 
 from seq2seq.utility.utilities import list2tensor
 
+
 class Pack(dict):
     """
     Pack
@@ -38,6 +39,7 @@ class Pack(dict):
             else:
                 pack[k] = v.to(device)
         return pack
+
 
 class Dataset(torch.utils.data.Dataset):
     """

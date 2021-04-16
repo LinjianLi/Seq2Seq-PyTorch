@@ -1,10 +1,10 @@
 import logging
 import torch
-import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 logger = logging.getLogger(__name__)
+
 
 def pad_rnn(inputs,
             hidden_size,
@@ -12,8 +12,8 @@ def pad_rnn(inputs,
             rnn=None,
             embedder=None,
             hidden=None,
-            num_layers=1,
-            batch_first=True):
+            num_layers: int = 1,
+            batch_first: bool = True):
     """
     forward
     input.shape: (batch, max_len, xxx) where xxx can be
@@ -26,7 +26,7 @@ def pad_rnn(inputs,
     else:
         rnn_inputs = inputs
 
-    batch_dim = 0 if batch_first == True else 1
+    batch_dim = 0 if batch_first else 1
     batch_size = inputs.size(batch_dim)
 
     # Sort the inputs and hidden by descending input lengths.

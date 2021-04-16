@@ -9,20 +9,21 @@ from seq2seq.module.attention import Attention
 
 logger = logging.getLogger(__name__)
 
+
 class DecoderRNN(nn.Module):
     def __init__(self,
                  input_size: int,
                  hidden_size: int,
                  output_size: int,
                  embedder=None,
-                 num_layers: int=1,
-                 dropout: float=0.0,
-                 embedding_dropout: float=0.0,
-                 rnn_cell: str='gru',
-                 batch_first: bool=True,
-                 attn_mode: bool=None,
-                 attn_hidden_size: int=-1,
-                 use_gpu: bool=False):
+                 num_layers: int = 1,
+                 dropout: float = 0.0,
+                 embedding_dropout: float = 0.0,
+                 rnn_cell: str = 'gru',
+                 batch_first: bool = True,
+                 attn_mode: str = None,
+                 attn_hidden_size: int = -1,
+                 use_gpu: bool = False):
 
         super(DecoderRNN, self).__init__()
 
@@ -57,20 +58,20 @@ class DecoderRNN(nn.Module):
         else:
             raise ValueError("Unsupported RNN Cell: {}".format(rnn_cell))
         self.rnn = self.rnn_cell(input_size=self.input_size,
-                                hidden_size=self.hidden_size,
-                                num_layers=self.num_layers,
-                                dropout=(self.dropout if self.num_layers > 1 else 0),
-                                bidirectional=False,
-                                batch_first=self.batch_first)
+                                 hidden_size=self.hidden_size,
+                                 num_layers=self.num_layers,
+                                 dropout=(self.dropout if self.num_layers > 1 else 0),
+                                 bidirectional=False,
+                                 batch_first=self.batch_first)
 
         if self.attn_mode is not None:
             self.attn = Attention(query_size=self.hidden_size,
-                                key_size=self.hidden_size,
-                                value_size=self.hidden_size,
-                                hidden_size=self.attn_hidden_size,
-                                mode=self.attn_mode)
+                                  key_size=self.hidden_size,
+                                  value_size=self.hidden_size,
+                                  hidden_size=self.attn_hidden_size,
+                                  mode=self.attn_mode)
             self.linear_concat = nn.Linear(self.hidden_size * 2,
-                                            self.hidden_size)
+                                           self.hidden_size)
 
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
@@ -126,14 +127,14 @@ class DecoderRNN(nn.Module):
         # which is the Bahdanau attention (Bahdanau, 2015).
         if self.attn_mode is not None:
             # Calculate the attention.
-            attn_weighted_sum, attn_weights\
+            attn_weighted_sum, attn_weights \
                 = self.attn(query=rnn_output, keys=encoder_outputs)
             cat = torch.cat((rnn_output, attn_weighted_sum), dim=-1)
             cat = torch.tanh(self.linear_concat(cat))
-            h_tilde = self.out(cat)   # (batch_size, seq_len, output_size)
+            h_tilde = self.out(cat)  # (batch_size, seq_len, output_size)
         else:
             attn_weights = None
-            h_tilde = self.out(rnn_output)   # (batch_size, seq_len, output_size)
+            h_tilde = self.out(rnn_output)  # (batch_size, seq_len, output_size)
 
         # Predict probability distribution of next word.
         # Some implementation will use log-softmax instead of simple softmax.
@@ -158,10 +159,10 @@ class DecoderRNN(nn.Module):
                 hidden=None,
                 lengths=None,
                 encoder_outputs=None,
-                max_length: int=-1,
-                teacher_forcing_ratio: float=0.0,
-                return_tokens: bool=False,
-                return_attention: bool=False):
+                max_length: int = -1,
+                teacher_forcing_ratio: float = 0.0,
+                return_tokens: bool = False,
+                return_attention: bool = False):
         """
         The forward process is greedy, that is, only consider the token with 
         the highest probability at each time step.
@@ -246,19 +247,23 @@ class DecoderRNN(nn.Module):
                 max_length = inputs.size(seq_len_dim)
             inputs = inputs[:, :1]  # Only take the first SOS token.
             for di in range(max_length):
-                dec_step_output_dict = self.forward_step(inputs, hidden, encoder_outputs, return_attention=return_attention)
+                dec_step_output_dict = self.forward_step(inputs,
+                                                         hidden,
+                                                         encoder_outputs,
+                                                         return_attention=return_attention)
                 step_output, hidden = dec_step_output_dict["log_probs"], dec_step_output_dict["last_hidden_state"]
                 # step_output.shape: (batch, 1, output_size)
                 # decoder_outputs.shape: (batch, seq_len, output_size)
                 decoder_outputs = torch.cat((decoder_outputs, step_output), dim=seq_len_dim)
                 # Without teacher forcing, the next input is decoder's own current output
                 # Decode the tokens by selecting those with the highest probabilities.
-                top_vals, top_ids = step_output.squeeze(1).topk(1) # shape: (batch, 1)
+                top_vals, top_ids = step_output.squeeze(1).topk(1)  # shape: (batch, 1)
                 if return_tokens:
                     decoded_tokens = torch.cat((decoded_tokens, top_ids),
-                                                dim=seq_len_dim) # shape: (batch_size, seq_len)
+                                               dim=seq_len_dim)  # shape: (batch_size, seq_len)
                 if return_attention:
-                    attention_weights = torch.cat((attention_weights, dec_step_output_dict["attention_weights"]), dim=seq_len_dim)
+                    attention_weights = torch.cat((attention_weights, dec_step_output_dict["attention_weights"]),
+                                                  dim=seq_len_dim)
                 inputs = top_ids
             output_dict["outputs"] = decoder_outputs
             output_dict["last_hidden_state"] = hidden

@@ -9,27 +9,38 @@
 # Modified by Linjian Li
 
 import torch
+from torch.nn.modules.loss import _Loss
 
-def maskNLLLoss(inp, target, mask=None):
-    """
-    inp: (batch_size, seq_length, out_size)
-    target: (batch_size, seq_length)
-    mask: (batch_size, seq_length)
-    """
-    nTotal = mask.sum().item() if mask is not None else None
-    try:
-        probs = torch.gather(input=inp, dim=-1, index=target.unsqueeze(-1))
-        probs = probs.squeeze(-1)
-    except:
-        print(inp.shape, target.shape)
-        print(inp, target)
-        raise
-    crossEntropy = -torch.log(probs)
-    if mask is not None:
+
+class MaskNLLLoss(_Loss):
+
+    def __init__(self, reduction='mean'):
+        self.reduction = reduction
+
+    def forward(self, inp, target, mask=None, reduction=True):
+        """
+        inp: (batch_size, seq_length, out_size)
+        target: (batch_size, seq_length)
+        mask: (batch_size, seq_length)
+        """
+        n_total = mask.sum().item() if mask is not None else None
         try:
-            crossEntropy = crossEntropy.masked_select(mask)
+            probs = torch.gather(input=inp, dim=-1, index=target.unsqueeze(-1))
+            probs = probs.squeeze(-1)
         except:
-            print(crossEntropy.shape, mask.shape)
+            print(inp.shape, target.shape)
+            print(inp, target)
             raise
-    loss = crossEntropy.mean()
-    return loss, nTotal
+        cross_entropy = -torch.log(probs)
+        if mask is not None:
+            try:
+                cross_entropy = cross_entropy.masked_select(mask)
+            except:
+                print(cross_entropy.shape, mask.shape)
+                raise
+        if reduction:
+            if self.reduction == 'mean':
+                loss = cross_entropy.mean()
+            elif self.reduction == 'sum':
+                loss = cross_entropy.sum()
+        return loss, n_total

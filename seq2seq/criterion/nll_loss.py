@@ -15,6 +15,7 @@ from torch.nn.modules.loss import _Loss
 
 logger = logging.getLogger(__name__)
 
+
 class NLLLoss(_Loss):
     """
     NLLLoss

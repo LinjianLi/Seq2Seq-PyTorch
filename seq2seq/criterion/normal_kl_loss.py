@@ -10,6 +10,7 @@ import torch
 from torch import distributions
 from torch.nn.modules.loss import _Loss
 
+
 class NormalKLLoss(_Loss):
     """
     NormalKLLoss

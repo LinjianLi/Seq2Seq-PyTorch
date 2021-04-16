@@ -14,7 +14,8 @@ from seq2seq.evaluator.evaluator import Evaluator
 
 logger = logging.getLogger(__name__)
 
-def avg_every_n_elems(l: list, n: int=1, drop_last: bool=False):
+
+def avg_every_n_elems(l: list, n: int = 1, drop_last: bool = False):
     """
     drop_last:
         If `True`, the last group whose size is less than n will be discarded.
@@ -30,17 +31,18 @@ def avg_every_n_elems(l: list, n: int=1, drop_last: bool=False):
             result[-1] = sum(l[-num_remains:]) / num_remains
     return result
 
+
 class Trainer(object):
     """docstring for Trainer"""
     def __init__(self,
                  model,
                  loss_fn,
                  optimizer,
-                 train_dataloder,
-                 valid_dataloder=None,
+                 train_dataloader,
+                 valid_dataloader=None,
                  scheduler=None,
                  gradient_accumulation=1,
-                 num_epoches=1,
+                 num_epochs=1,
                  early_stop_num=10,
                  save_best_model=True,
                  save_path="./checkpoints",
@@ -54,35 +56,35 @@ class Trainer(object):
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.gradient_accumulation = gradient_accumulation
-        self.num_epoches = num_epoches
+        self.num_epochs = num_epochs
 
-        self.train_dataloder = train_dataloder
-        self.valid_dataloder = valid_dataloder
-        if self.valid_dataloder is None:
-            logger.warning("Validation data loder is not provided! Using train data loder instead.")
-            self.valid_dataloder = train_dataloder
-        self.evaluator = Evaluator(loss_fn=self.loss_fn, dataloder=self.valid_dataloder)
+        self.train_dataloader = train_dataloader
+        self.valid_dataloader = valid_dataloader
+        if self.valid_dataloader is None:
+            logger.warning("Validation data loader is not provided! Using train data loader instead.")
+            self.valid_dataloader = train_dataloader
+        self.evaluator = Evaluator(loss_fn=self.loss_fn, dataloader=self.valid_dataloader)
 
         if self.gradient_accumulation > 1:
-            equiv_batch_size = train_dataloder.batch_size * self.gradient_accumulation
+            equiv_batch_size = train_dataloader.batch_size * self.gradient_accumulation
             logger.info("Note! Gradient accumulation setting is greater than 1. "
                         "The equivalent training batch size is the actual batch "
                         "size times the number of gradient accumulation steps. "
-                        "Current setting: actual={}, accumulation={}, equivalent={}."\
-                            .format(self.train_dataloder.batch_size,
-                                    self.gradient_accumulation,
-                                    equiv_batch_size))
+                        "Current setting: actual={}, accumulation={}, equivalent={}.".format(
+                            self.train_dataloader.batch_size,
+                            self.gradient_accumulation,
+                            equiv_batch_size))
 
         self.scheduler = scheduler
         self.early_stop_num = early_stop_num
         self.save_best_model = save_best_model
         self.save_path = save_path
         self.save_every_epoch = save_every_epoch
-        self.plot_loss_group_by = plot_loss_group_by.lower() # option: "epoch" or "update"
+        self.plot_loss_group_by = plot_loss_group_by.lower()  # option: "epoch" or "update"
         if self.plot_loss_group_by.lower() not in ("epoch", "update"):
             logger.warning("Argument plot_loss_group_by=\"{}\" not supported!"
-                           " Swich to plot_loss_group_by=\"epoch\"."\
-                                .format(self.plot_loss_group_by))
+                           " Switch to plot_loss_group_by=\"epoch\".".format(
+                                self.plot_loss_group_by))
             self.plot_loss_group_by = "epoch"
         self.plot_loss_group_by_every = plot_loss_group_by_every
 
@@ -105,10 +107,10 @@ class Trainer(object):
         if self.evaluate_before_train and self.now_epoch < 0:
             logger.info("Evaluation before training.")
             # Evaluate on training set.
-            valid_dataloder_backup = self.valid_dataloder
-            self.evaluator.dataloder = self.train_dataloder
+            valid_dataloader_backup = self.valid_dataloader
+            self.evaluator.dataloader = self.train_dataloader
             train_loss_avg, train_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
-            self.evaluator.dataloder = valid_dataloder_backup
+            self.evaluator.dataloader = valid_dataloader_backup
             # Evaluate on validation set.
             valid_loss_avg, valid_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
             # Record loss. Only record the average over the dataset instead of each batch.
@@ -116,10 +118,11 @@ class Trainer(object):
             self.train_loss_record += [train_loss_avg]
             self.valid_loss_record += [valid_loss_avg]
 
-        # Note that the epoch counter starts at 1 and end at max number of epoches + 1,
-        # which is [1, num_epoches], which is also [1, num_epoches + 1)
-        start_epoch = 1 if self.now_epoch < 0 else self.now_epoch + 1 # Start from scratch or continue from a checkpoint?
-        for self.now_epoch in range(start_epoch, self.num_epoches + 1):
+        # Note that the epoch counter starts at 1 and end at max number of epochs + 1,
+        # which is [1, num_epochs], which is also [1, num_epochs + 1)
+        # Start from scratch or continue from a checkpoint?
+        start_epoch = 1 if self.now_epoch < 0 else self.now_epoch + 1
+        for self.now_epoch in range(start_epoch, self.num_epochs + 1):
             logger.info('Epoch {} starts.'.format(self.now_epoch))
 
             train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, progress_indicator=progress_indicator)
@@ -144,23 +147,23 @@ class Trainer(object):
                     self.best_record['model'] = self.model
 
             # If the loss has not been descending in several epochs, stop training.
-            if ((self.early_stop_num != None)
-                and (self.early_stop_num > 0)
-                and (self.now_epoch - self.best_record['epoch'] >= self.early_stop_num)
-                and (valid_loss_avg > self.best_record['valid_loss'])):
+            if ((self.early_stop_num is not None)
+                    and (self.early_stop_num > 0)
+                    and (self.now_epoch - self.best_record['epoch'] >= self.early_stop_num)
+                    and (valid_loss_avg > self.best_record['valid_loss'])):
                 logger.info('Early stop training in epoch {}.\n'
                             '\tThe best epoch is {}.\n'
-                            '\tThe best validation loss is {}.'\
-                                .format(self.now_epoch,
-                                        self.best_record['epoch'],
-                                        self.best_record['valid_loss']))
+                            '\tThe best validation loss is {}.'.format(
+                                self.now_epoch,
+                                self.best_record['epoch'],
+                                self.best_record['valid_loss']))
                 break
 
             if self.save_every_epoch > 0 and self.now_epoch % self.save_every_epoch == 0:
                 self.save()
 
-            self.save_loss_record() # Update loss record after each epoch
-            self.plot_loss() # Update loss plot after each epoch
+            self.save_loss_record()  # Update loss record after each epoch
+            self.plot_loss()  # Update loss plot after each epoch
 
         self.save_loss_record()
         self.plot_loss()
@@ -171,17 +174,18 @@ class Trainer(object):
         if self.save_path is not None:
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
-        pyplot.clf() # Clear current figures.
+        pyplot.clf()  # Clear current figures.
         pyplot.plot(self.train_loss_record, label='Train loss')
         pyplot.plot(self.valid_loss_record, label='Valid loss')
-        pyplot.legend() # Show the label of each curve.
+        pyplot.legend()  # Show the label of each curve.
         pyplot.xlabel("Num x{} {}(s)".format(self.plot_loss_group_by_every, self.plot_loss_group_by))
         pyplot.ylabel("Loss")
         pyplot.savefig(os.path.join(self.save_path, 'train_val_loss_plot.svg'))
 
     def save_best(self):
-        logger.info('The best epoch is {}. The best validation loss is {}.'\
-                        .format(self.best_record['epoch'] , self.best_record['valid_loss']))
+        logger.info('The best epoch is {}. The best validation loss is {}.'.format(
+                        self.best_record['epoch'],
+                        self.best_record['valid_loss']))
         save_dict = {'model': self.best_record['model'].state_dict(),
                      'epoch': self.best_record['epoch'],
                      'val_loss': self.best_record['valid_loss']}
@@ -189,7 +193,7 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                'best_epoch_{}-model_only.pt'.format(save_dict['epoch']))
+                                           'best_epoch_{}-model_only.pt'.format(save_dict['epoch']))
             torch.save(save_dict, joint_save_path)
 
     def save(self):
@@ -197,11 +201,11 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                'epoch_{}-train_checkpoint.pt'.format(self.now_epoch))
-            save_dict = {'model':self.model.state_dict(),
-                         'optimizer':self.optimizer.state_dict(),
-                         'scheduler':self.scheduler.state_dict() if self.scheduler is not None else None,
-                         'epoch':self.now_epoch,
+                                           'epoch_{}-train_checkpoint.pt'.format(self.now_epoch))
+            save_dict = {'model': self.model.state_dict(),
+                         'optimizer': self.optimizer.state_dict(),
+                         'scheduler': self.scheduler.state_dict() if self.scheduler is not None else None,
+                         'epoch': self.now_epoch,
                          'train_loss_record': self.train_loss_record,
                          'valid_loss_record': self.valid_loss_record}
             torch.save(save_dict, joint_save_path)
@@ -211,7 +215,7 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                'train_valid_loss_record.json')
+                                           'train_valid_loss_record.json')
             save_dict = {'plot_loss_group_by': self.plot_loss_group_by,
                          'train_loss': self.train_loss_record,
                          'valid_loss': self.valid_loss_record}
@@ -245,15 +249,15 @@ class Trainer(object):
         losses = []
 
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.train_dataloder, task_name="Train Epoch")
+            wrapped_iterable = ProgressText(self.train_dataloader, task_name="Train Epoch")
         elif progress_indicator == "tqdm":
-            wrapped_iterable = tqdm(self.train_dataloder)
+            wrapped_iterable = tqdm(self.train_dataloader)
             wrapped_iterable.set_description("Train Epoch")
         else:
-            wrapped_iterable = self.train_dataloder
+            wrapped_iterable = self.train_dataloader
 
         current_grad_accumulation_count = 0
-        current_batch, num_batches =0, len(self.train_dataloder)
+        current_batch, num_batches = 0, len(self.train_dataloader)
         loss_items_accumulation_normalized = []
         for inputs in wrapped_iterable:
             current_batch += 1
@@ -286,7 +290,7 @@ class Trainer(object):
         return loss
 
     def update_params(self, grad_clip):
-        if grad_clip is not None and grad_clip > 0 :  # Clip the gradient.
+        if grad_clip is not None and grad_clip > 0:  # Clip the gradient.
             # Trailing underscore means clip in place.
             clip_grad_norm_(parameters=self.model.parameters(), max_norm=grad_clip)
         self.optimizer.step()  # Update model parameter by gradient descent.

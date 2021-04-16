@@ -102,7 +102,7 @@ with open("./inference-greedy_search.txt", mode="w", encoding="utf-8") as f:
         input = " ".join(vocab_fra.sentence_from_indexes(input))
         infer = " ".join(vocab_eng.sentence_from_indexes(infer))
         target = " ".join(vocab_eng.sentence_from_indexes(target))
-        string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
+        string = "\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
         f.write(string)
 logger.info("Inference greedy search finished.")
 
@@ -117,7 +117,7 @@ with open("./inference-beam_search.txt", mode="w", encoding="utf-8") as f:
         input = " ".join(vocab_fra.sentence_from_indexes(input))
         infer = " ".join(vocab_eng.sentence_from_indexes(infer))
         target = " ".join(vocab_eng.sentence_from_indexes(target))
-        string ="\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
+        string = "\n" + "input:\t" + input + "\n" + "infer:\t" + infer + "\n" + "target:\t" + target + "\n"
         f.write(string)
 logger.info("Inference beam search finished.")
 
