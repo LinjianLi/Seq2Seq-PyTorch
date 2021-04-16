@@ -249,10 +249,10 @@ class Trainer(object):
         losses = []
 
         if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.train_dataloader, task_name="Train Epoch")
+            wrapped_iterable = ProgressText(self.train_dataloader, task_name="Train Epoch {}".format(self.now_epoch))
         elif progress_indicator == "tqdm":
             wrapped_iterable = tqdm(self.train_dataloader)
-            wrapped_iterable.set_description("Train Epoch")
+            wrapped_iterable.set_description("Train Epoch {}".format(self.now_epoch))
         else:
             wrapped_iterable = self.train_dataloader
 
