@@ -95,7 +95,7 @@ class SimpleRNN(nn.Module):
             # Pack padded batch of sequences for RNN module
             inputs = pack_padded_sequence(
                 inputs,
-                sorted_lengths,
+                sorted_lengths.to("cpu"),
                 batch_first=self.batch_first)
             if hidden is not None:
                 # Hidden states are always not batch-first.
