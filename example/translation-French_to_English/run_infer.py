@@ -10,9 +10,12 @@ from seq2seq.inputter.vocab import Vocab
 from seq2seq.model.seq2seq import Seq2Seq
 
 
-logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M.%S', time.gmtime())),
-                    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
+# The letter "T" is a delimiter suggested in ISO-8601.
+# The colon ":" is replaced by the period "." for the log file name.
+logging.basicConfig(filename="./log-{}.log".format(
+                        time.strftime("%Y-%m-%dT%H.%M.%S", time.gmtime())),
+                    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                    datefmt="%Y-%m-%dT%H:%M:%S",
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)

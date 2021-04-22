@@ -3,9 +3,12 @@ import argparse
 import time
 import logging
 
-logging.basicConfig(filename="./log-{}.log".format(time.strftime('%Y-%m-%d %H.%M.%S', time.gmtime())),
-                    format='%(asctime)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
+# The letter "T" is a delimiter suggested in ISO-8601.
+# The colon ":" is replaced by the period "." for the log file name.
+logging.basicConfig(filename="./log-{}.log".format(
+                        time.strftime("%Y-%m-%dT%H.%M.%S", time.gmtime())),
+                    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                    datefmt="%Y-%m-%dT%H:%M:%S",
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
