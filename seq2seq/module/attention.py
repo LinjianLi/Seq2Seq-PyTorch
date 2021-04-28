@@ -32,6 +32,8 @@ class Attention(nn.Module):
                  return_attn_only: bool = False,
                  project: bool = False):
         super(Attention, self).__init__()
+
+        mode = mode.lower()
         assert (
             mode in (
                 "dot",
@@ -57,9 +59,19 @@ class Attention(nn.Module):
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(dim=-1)
 
+        if self.mode in ("concat", "mlp", "additive"):
+            assert (
+                self.hidden_size > 0
+            ), (
+                "Attention mode is \"{mode}\" but receive attention hidden size of {hidden_size}".format(
+                    mode=self.mode, hidden_size=self.hidden_size
+                )
+            )
+
         if self.mode == "general":
             self.linear_query = nn.Linear(
                 self.query_size, self.key_size, bias=False)
+
         elif self.mode == "concat":
             self.W = nn.Linear(
                 self.query_size + self.key_size,
@@ -67,6 +79,7 @@ class Attention(nn.Module):
                 bias=False
             )
             self.v = nn.Linear(self.hidden_size, 1, bias=False)
+
         elif self.mode == "mlp" or self.mode == "additive":
             self.linear_query = nn.Linear(
                 self.query_size, self.hidden_size, bias=False)
@@ -82,10 +95,10 @@ class Attention(nn.Module):
             )
 
     def __repr__(self):
-        main_string = "Attention({}, {}, {}"\
+        main_string = "Attention(query_size={}, key_size={}, value_size={}"\
             .format(self.query_size, self.key_size, self.value_size)
-        if self.mode == "mlp" or self.mode == "additive":
-            main_string += ", {}".format(self.hidden_size)
+        if self.mode in ("concat", "mlp", "additive"):
+            main_string += ", hidden_size={}".format(self.hidden_size)
         main_string += ", mode='{}'".format(self.mode)
         if self.project:
             main_string += ", project=True"
