@@ -225,6 +225,10 @@ class Seq2Seq(BaseModel, GenerationMixin):
                                            return_tokens=True)
             decoder_output_tokens = dec_output_dict["decoded_tokens"].squeeze(0).tolist()  # shape: (seq_len)
 
+            if decoder_output_tokens[0] == self.end_token:
+                logger.warning("The first token of the output tokens is the <EOS> token!")
+                logger.warning("The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs), str(dec_inputs)))
+
             # Discard the content after the first end_token.
             for i in range(len(decoder_output_tokens)):
                 if decoder_output_tokens[i] == self.end_token:
@@ -307,7 +311,13 @@ class Seq2Seq(BaseModel, GenerationMixin):
             # Remove the <SOS> token. `GenerationMixin.beam_search()` does not exclude <SOS> token.
             sequences = sequences[:, 1:]
             sequences, sequences_scores = sequences.tolist(), sequences_scores.tolist()
+            # Keep the result with the top score.
             sequences, sequences_scores = sequences[0], sequences_scores[0]
+
+            if sequences[0] == self.end_token:
+                logger.warning("The first token of the output tokens is the <EOS> token!")
+                logger.warning("The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs), str(dec_inputs)))
+
 
             # Discard the content after the first end_token.
             # `max_length - 1` because of the removal of the start token.
