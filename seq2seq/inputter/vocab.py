@@ -152,6 +152,7 @@ class Vocab:
             self.word2count[word] = count
 
     def indexes_from_sentence(self, sentence, add_sos=False, add_eos=False):
+        assert (len(sentence) > 0), ("The input is empty!")
         if isinstance(sentence, str):
             sentence = re.sub(r"(\s\t\n+)", r" ", sentence)
             sentence = sentence.strip().split()
@@ -163,6 +164,7 @@ class Vocab:
         return indexes
 
     def sentence_from_indexes(self, indexes):
+        assert (len(indexes) > 0), ("The input is empty!")
         assert isinstance(indexes, (list, tuple))
         assert isinstance(indexes[0], int)
         sentence = [self.get_word(index) for index in indexes]
