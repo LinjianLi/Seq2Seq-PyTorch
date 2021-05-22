@@ -23,23 +23,23 @@ class Vocab:
         self.word2count = {}
         self.num_words = 4  # Count SOS, EOS, PAD, UNK
 
-    def to_json(self, filename):
+    def to_json(self, filename, encoding="utf-8"):
         data = {"name": self.name,
                 "trimmed": self.trimmed,
                 "word2index": self.word2index,
                 # "index2word": self.index2word,
                 "word2count": self.word2count,
                 "num_words": self.num_words}
-        with open(filename, mode="w") as f:
+        with open(filename, mode="w", encoding=encoding) as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info("{} dumped to file {}".format(self, filename))
 
     @classmethod
-    def from_json(cls, filename):
+    def from_json(cls, filename, encoding="utf-8"):
         if not os.path.isfile(filename):
             raise FileNotFoundError
 
-        with open(filename, mode="r") as f:
+        with open(filename, mode="r", encoding=encoding) as f:
             data = json.load(f)
         voc = Vocab()
         voc.name = data["name"]
