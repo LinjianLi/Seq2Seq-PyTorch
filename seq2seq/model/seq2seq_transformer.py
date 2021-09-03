@@ -221,9 +221,10 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         assert isinstance(src[0], int)
 
         need_transpose = (batch_first != self.batch_first)
-        # logger.warn("The `batch_first` settings of the input and the model are different.\n"
-        #             "Getting {} and {}, respectively.\n"
-        #             "The input will be transposed.".format(batch_first, self.batch_first))
+        # if need_transpose:
+        #     logger.warn("The `batch_first` settings of the input and the model are different.\n"
+        #                 "Getting {} and {}, respectively.\n"
+        #                 "The input will be transposed.".format(batch_first, self.batch_first))
 
         self.eval()
         with torch.no_grad():
