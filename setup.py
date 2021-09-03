@@ -18,10 +18,10 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3",
+    python_requires=">=3.8",
     install_requires=[
-        "python>=3.8",
-        "pytorch>=1.9",
+        # "python>=3.9",
+        "torch>=1.9",
         "matplotlib",
         "prettytable",
         "tqdm",
