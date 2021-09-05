@@ -260,7 +260,7 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
 
                 tgt = torch.cat((tgt, last_index.unsqueeze(self_seq_dim)), dim=self_seq_dim).detach()
 
-                end_flag = (((tgt == self.end_token).int().sum(dim = self_seq_dim) > 0).int().sum()) == tgt.size(self_seq_dim)
+                end_flag = (((tgt == self.end_token).int().sum(dim = self_seq_dim) > 0).int().sum()) == tgt.size(self_batch_dim)
                 if end_flag:
                     break
 
