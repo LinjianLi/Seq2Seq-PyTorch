@@ -11,6 +11,7 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch.nn import TransformerDecoder, TransformerDecoderLayer
 from dataclasses import dataclass
 
+from seq2seq.utility.utilities import list2tensor
 from seq2seq.model.base_model import BaseModel
 from seq2seq.inputter.embedder import Embedder
 from seq2seq.model.beam_search_utils import BeamSearchScorer
@@ -216,36 +217,31 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         """
         infer_greedy
         """
-
-        assert isinstance(src, (list, tuple))
-        assert isinstance(src[0], int)
-
         need_transpose = (batch_first != self.batch_first)
-        # if need_transpose:
-        #     logger.warn("The `batch_first` settings of the input and the model are different.\n"
-        #                 "Getting {} and {}, respectively.\n"
-        #                 "The input will be transposed.".format(batch_first, self.batch_first))
+        self_batch_dim = 0 if self.batch_first else 1
+        self_seq_dim = 1 - self_batch_dim
 
         self.eval()
         with torch.no_grad():
-            src = torch.tensor(src, dtype=torch.long)  # shape: (seq_len)
-            src = src.unsqueeze(0)  # shape: (1, seq_len)
+            if isinstance(src, (list, tuple)):
+                src, lengths = list2tensor(src)
+            if len(src.size()) == 1:
+                src = src.unsqueeze(0)
+                lengths = lengths.unsqueeze(0)
             src = src.to(self.device)
 
-            # shape: (batch_size, seq_len)=(1, 1)
-            dec_inputs = torch.tensor([self.start_token], dtype=torch.long).unsqueeze(0)
-            dec_inputs = dec_inputs.to(self.device)
-
-            tgt = dec_inputs
+            # shape: (batch_size, seq_len)
+            tgt = torch.ones(
+                size=[src.size(self_batch_dim), 1],
+                dtype=torch.long,
+                device=self.device
+            ) * self.start_token
 
             if need_transpose:
                 src = src.transpose(0, 1)
                 src_mask = src_mask.transpose(0, 1)
                 src_key_padding_mask = src_key_padding_mask.transpose(0, 1)
                 tgt = tgt.transpose(0, 1)
-            
-            self_batch_dim = 0 if self.batch_first else 1
-            self_seq_dim = 1 - self_batch_dim
 
             src_emb = self.pos_encoder(self.enc_embedder(src))
             memory = self.encoder(src_emb, src_mask, src_key_padding_mask).detach()
@@ -257,15 +253,18 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
                 log_probs = functional.log_softmax(output, dim=-1)
                 o_score, max_index = torch.max(log_probs, dim=2)
                 last_index = max_index[-1] if not self.batch_first else max_index[:, -1]
-
                 tgt = torch.cat((tgt, last_index.unsqueeze(self_seq_dim)), dim=self_seq_dim).detach()
-
-                end_flag = (((tgt == self.end_token).int().sum(dim = self_seq_dim) > 0).int().sum()) == tgt.size(self_batch_dim)
+                end_flag = (
+                    ((tgt == self.end_token).int().sum(dim=self_seq_dim) > 0).int().sum()
+                    ==
+                    tgt.size(self_batch_dim)
+                )
                 if end_flag:
                     break
 
             if need_transpose:
                 tgt = tgt.transpose(0, 1)
+            tgt = tgt[:, 1:] if batch_first else tgt[1:, :]  # Remove start token.
             tgt = tgt.squeeze(0).cpu().numpy().tolist()
             return tgt
 
