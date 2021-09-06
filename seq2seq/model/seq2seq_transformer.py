@@ -41,7 +41,7 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
             hidden_size: int,
             start_token: int = 1,
             end_token: int = 2,
-            padding_idx=None,
+            padding_idx: int = 0,
             batch_first: bool = True,
             num_layers: int = 1,
             attn_head_num=None,
@@ -145,7 +145,7 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         encode
         """
         enc_inputs, enc_input_lengths = inputs  # inputs["inputs"], inputs["lengths"]
-        enc_input_pad_masks = (enc_inputs == self.padding_idx)
+        enc_input_pad_masks = (enc_inputs == self.padding_idx) if self.padding_idx is not None else None
         enc_inputs = self.pos_encoder(self.enc_embedder(enc_inputs))
         memory = self.encoder(enc_inputs, None, enc_input_pad_masks)
         return memory
