@@ -64,7 +64,8 @@ def list2tensor(X):
 
     if len(size) == 1:  # 1 dimensional list
         tensor = torch.tensor(X)
-        return tensor
+        length = torch.tensor(size[0])
+        return tensor, length
 
     tensor = torch.zeros(size, dtype=torch.long)
     lengths = torch.zeros(size[:-1], dtype=torch.long)
