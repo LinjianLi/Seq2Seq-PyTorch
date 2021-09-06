@@ -1,6 +1,5 @@
 import torch
 from tqdm import tqdm
-from progress_text import ProgressText
 
 
 class Evaluator(object):
@@ -17,10 +16,8 @@ class Evaluator(object):
                         .format(self.loss_fn, self.dataloader.batch_size, len(self.dataloader))
         return main_string
 
-    def eval(self, model, progress_indicator="progress-text"):
-        if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.dataloader, task_name="Evaluation")
-        elif progress_indicator == "tqdm":
+    def eval(self, model, use_tqdm: bool = True):
+        if use_tqdm:
             wrapped_iterable = tqdm(self.dataloader)
             wrapped_iterable.set_description("Evaluation")
         else:

@@ -3,7 +3,7 @@ import logging
 import re
 import json
 from sklearn.model_selection import train_test_split
-from progress_text import ProgressText
+from tqdm import tqdm
 from seq2seq.inputter.vocab import Vocab
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,8 @@ def create_vocab(vocab_file_eng, vocab_file_fra):
         vocab_fra = Vocab("fra")
         logger.info('Creating vocab.')
         with open("./data/eng-fra.txt", "r", encoding="utf-8") as f:
-            for line in ProgressText(f.readlines(), task_name="Create Vocab"):
+            print("Create Vocab")
+            for line in tqdm(f.readlines()):
                 line = line.split('\t')
                 line = normalizePair(line)
                 if not pair_is_simple(line):
@@ -84,7 +85,8 @@ def get_vocab():
 def prepare_data(data_path, vocab_eng, vocab_fra):
     data_ids = []
     with open(data_path, "r", encoding="utf-8") as f:
-        for line in ProgressText(f.readlines(), task_name="Prepare Data"):
+        print("Prepare Data")
+        for line in tqdm(f.readlines()):
             line = line.split('\t')
             line = normalizePair(line)
             if not pair_is_simple(line):

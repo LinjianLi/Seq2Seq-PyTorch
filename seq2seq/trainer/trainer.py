@@ -2,7 +2,6 @@ import os
 import logging
 import json
 from tqdm import tqdm
-from progress_text import ProgressText
 import torch
 from torch.nn.utils import clip_grad_norm_
 import matplotlib
@@ -106,16 +105,16 @@ class Trainer(object):
                             'valid_loss': float('inf'),
                             'model': None}
 
-    def run(self, grad_clip=5.0, progress_indicator="progress-text"):
+    def run(self, grad_clip=5.0, use_tqdm: bool = True):
         if self.evaluate_before_train and self.now_epoch < 0:
             logger.info("Evaluation before training.")
             # Evaluate on training set.
             valid_dataloader_backup = self.valid_dataloader
             self.evaluator.dataloader = self.train_dataloader
-            train_loss_avg, train_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
+            train_loss_avg, train_losses = self.evaluator.eval(self.model, use_tqdm=use_tqdm)
             self.evaluator.dataloader = valid_dataloader_backup
             # Evaluate on validation set.
-            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
+            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, use_tqdm=use_tqdm)
             # Record loss. Only record the average over the dataset instead of each batch.
             logger.info('Train loss avg: {:.3f}\tValid loss avg: {:.3f}'.format(train_loss_avg, valid_loss_avg))
             self.train_loss_record += [train_loss_avg]
@@ -128,8 +127,8 @@ class Trainer(object):
         for self.now_epoch in range(start_epoch, self.num_epochs + 1):
             logger.info('Epoch {} starts.'.format(self.now_epoch))
 
-            train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, progress_indicator=progress_indicator)
-            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, progress_indicator=progress_indicator)
+            train_loss_avg, train_losses = self.train_epoch(grad_clip=grad_clip, use_tqdm=use_tqdm)
+            valid_loss_avg, valid_losses = self.evaluator.eval(self.model, use_tqdm=use_tqdm)
 
             if self.scheduler is not None:
                 self.scheduler.step()
@@ -247,13 +246,11 @@ class Trainer(object):
         self.train_loss_record = checkpoint['train_loss_record']
         self.valid_loss_record = checkpoint['valid_loss_record']
 
-    def train_epoch(self, grad_clip=5.0, progress_indicator="progress-text"):
+    def train_epoch(self, grad_clip=5.0, use_tqdm: bool = True):
         self.model.train()
         losses = []
 
-        if progress_indicator == "progress-text":
-            wrapped_iterable = ProgressText(self.train_dataloader, task_name="Train Epoch {}".format(self.now_epoch))
-        elif progress_indicator == "tqdm":
+        if use_tqdm:
             wrapped_iterable = tqdm(self.train_dataloader)
             wrapped_iterable.set_description("Train Epoch {}".format(self.now_epoch))
         else:
@@ -275,7 +272,7 @@ class Trainer(object):
                 current_grad_accumulation_count = 0
                 losses.append(sum(loss_items_accumulation_normalized))  # Append the mean.
                 loss_items_accumulation_normalized = []
-                if progress_indicator == "tqdm":
+                if use_tqdm:
                     wrapped_iterable.set_postfix({'current loss': "{:.3f}".format(losses[-1])})
         loss_avg = sum(losses) / len(losses)
         return loss_avg, losses
