@@ -141,16 +141,6 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask.to(self.device)
 
-    def encode(self, inputs):
-        """
-        encode
-        """
-        enc_inputs, enc_input_lengths = inputs  # inputs["inputs"], inputs["lengths"]
-        enc_input_pad_masks = (enc_inputs == self.padding_idx) if self.padding_idx is not None else None
-        enc_inputs = self.pos_encoder(self.enc_embedder(enc_inputs))
-        memory = self.encoder(enc_inputs, None, enc_input_pad_masks)
-        return memory
-
     def forward(
             self,
             inputs,
@@ -162,7 +152,14 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         forward
         """
         enc_inputs, dec_inputs = inputs["input"], inputs["target"]
-        memory = self.encode(enc_inputs)
+
+        # Encoding.
+        enc_inputs, enc_input_lengths = enc_inputs
+        enc_input_pad_masks = (enc_inputs == self.padding_idx) if self.padding_idx is not None else None
+        enc_inputs = self.pos_encoder(self.enc_embedder(enc_inputs))
+        memory = self.encoder(src=enc_inputs, mask=None, src_key_padding_mask=enc_input_pad_masks)
+
+        # Prepare decoder input.
         dec_inputs, dec_input_lengths = dec_inputs
         # Target does not include SOS token. Need to add SOS.
         # And need to remove the last token to maintain the length.
@@ -183,8 +180,14 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
         if tgt_mask is None:
             tgt_mask = self.generate_square_subsequent_mask(dec_inputs.size(1))
 
+        # Decoding.
         dec_output = self.decoder(
-            dec_inputs, memory, tgt_mask, None, tgt_key_padding_mask
+            dec_inputs,
+            memory,
+            tgt_mask=tgt_mask,
+            memory_mask=None,
+            tgt_key_padding_mask=tgt_key_padding_mask,
+            memory_key_padding_mask=enc_input_pad_masks
         )
         dec_output = self.output_layer(dec_output)
         log_probs = functional.log_softmax(dec_output, dim=-1)
@@ -210,7 +213,6 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
             src,
             src_mask=None,
             src_key_padding_mask=None,
-            tgt=None,
             max_length: int = 20,
             batch_first: bool = True
     ):
@@ -230,7 +232,10 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
                 lengths = lengths.unsqueeze(0)
             src = src.to(self.device)
 
-            # shape: (batch_size, seq_len)
+            if src_key_padding_mask is None and self.padding_idx is not None:
+                src_key_padding_mask = (src == self.padding_idx)
+
+            # Prepare decoder input. shape: (batch_size, 1)
             tgt = torch.ones(
                 size=[src.size(self_batch_dim), 1],
                 dtype=torch.long,
@@ -239,16 +244,25 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
 
             if need_transpose:
                 src = src.transpose(0, 1)
-                src_mask = src_mask.transpose(0, 1)
-                src_key_padding_mask = src_key_padding_mask.transpose(0, 1)
+                src_mask = src_mask.transpose(0, 1) if src_mask is not None else None
+                src_key_padding_mask = src_key_padding_mask.transpose(0, 1) if src_key_padding_mask is not None else None
                 tgt = tgt.transpose(0, 1)
 
+            # Encoding.
             src_emb = self.pos_encoder(self.enc_embedder(src))
-            memory = self.encoder(src_emb, src_mask, src_key_padding_mask).detach()
+            memory = self.encoder(src=src_emb, mask=src_mask, src_key_padding_mask=src_key_padding_mask).detach()
 
+            # Decoding step by step.
             for i in range(max_length):
                 tgt_input = self.pos_encoder(self.dec_embedder(tgt))
-                output = self.decoder(tgt_input, memory, None, None, None)
+                output = self.decoder(
+                    tgt_input,
+                    memory,
+                    tgt_mask=None,
+                    memory_mask=None,
+                    tgt_key_padding_mask=None,
+                    memory_key_padding_mask=src_key_padding_mask
+                )
                 output = self.output_layer(output)
                 log_probs = functional.log_softmax(output, dim=-1)
                 o_score, max_index = torch.max(log_probs, dim=2)
@@ -265,7 +279,7 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
             if need_transpose:
                 tgt = tgt.transpose(0, 1)
             tgt = tgt[:, 1:] if batch_first else tgt[1:, :]  # Remove start token.
-            tgt = tgt.squeeze(0).cpu().numpy().tolist()
+            tgt = tgt.cpu().numpy().tolist()
             return tgt
 
     def infer_beam(
