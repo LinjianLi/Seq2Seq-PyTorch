@@ -34,7 +34,8 @@ def seq_mask_from_lens(lengths, max_len=None):
     If the `lengths` is of shape (...), the `mask` is of shape (..., max_len).
     The last dimension is of shape (max_len) and consisting of consecutive
     `True`s and `False`s. The number of `True`s is decided by the number in
-    the `lengths`.
+    the `lengths`. `True` means that the corresponding position is not
+    padding token, and `False` otherwise.
 
     lengths: tensor containing the lengths of sequences
     max_len: the max length of all the sequences
@@ -48,6 +49,12 @@ def seq_mask_from_lens(lengths, max_len=None):
     return mask
 
 
+def seq_pad_mask_from_lens(lengths, max_len=None):
+    non_pad_mask = seq_mask_from_lens(lengths, max_len)
+    pad_mask = ~non_pad_mask
+    return pad_mask
+
+
 def list2tensor(X):
     """
     Convert an irregular shape list to a regular shape tensor padded with zero.
@@ -58,9 +65,9 @@ def list2tensor(X):
     """
     try:
         size = shape_fit(X)
-    except:
+    except Exception as e:
         print(X)
-        raise
+        raise e
 
     if len(size) == 1:  # 1 dimensional list
         tensor = torch.tensor(X)
