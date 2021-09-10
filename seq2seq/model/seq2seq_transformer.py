@@ -179,6 +179,8 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
 
         if tgt_mask is None:
             tgt_mask = self.generate_square_subsequent_mask(dec_inputs.size(1))
+        if tgt_key_padding_mask is None and self.padding_idx is not None:
+            tgt_key_padding_mask = (enc_inputs == self.padding_idx)
 
         # Decoding.
         dec_output = self.decoder(
