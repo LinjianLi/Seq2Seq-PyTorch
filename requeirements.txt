@@ -3,5 +3,4 @@ matplotlib
 prettytable
 
 tqdm
-progress-text
 scikit-learn
