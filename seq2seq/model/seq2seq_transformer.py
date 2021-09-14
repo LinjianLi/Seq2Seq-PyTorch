@@ -215,6 +215,7 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
             src,
             src_mask=None,
             src_key_padding_mask=None,
+            min_length: int = 1,
             max_length: int = 20,
             batch_first: bool = True
     ):
@@ -269,6 +270,27 @@ class Seq2SeqTransformer(BaseModel, GenerationMixin):
                 log_probs = functional.log_softmax(output, dim=-1)
                 o_score, max_index = torch.max(log_probs, dim=2)
                 last_index = max_index[-1] if not self.batch_first else max_index[:, -1]
+
+                # -------------------------------------------------------------
+                # If the generated sequence does not meet the minimum length constraint,
+                # the model should not generate end token at this time step.
+                # Changing the probability of end token to be zero or a very tiny value.
+                if tgt.size(self_seq_dim) < (min_length + 1):
+                    if (last_index == self.end_token).int().sum() > 0:
+                        end_token_position_mask = (last_index == self.end_token)
+                        if self.batch_first:
+                            end_token_position_mask = end_token_position_mask.unsqueeze(1).unsqueeze(2)
+                        else:
+                            end_token_position_mask = end_token_position_mask.unsqueeze(0).unsqueeze(2)
+                        output[:, :, self.end_token:self.end_token+1].masked_fill_(
+                            mask=end_token_position_mask,
+                            value=(-float("inf"))
+                        )
+                        log_probs = functional.log_softmax(output, dim=-1)
+                        o_score, max_index = torch.max(log_probs, dim=2)
+                        last_index = max_index[-1] if not self.batch_first else max_index[:, -1]
+                # -------------------------------------------------------------
+
                 tgt = torch.cat((tgt, last_index.unsqueeze(self_seq_dim)), dim=self_seq_dim).detach()
                 end_flag = (
                     ((tgt == self.end_token).int().sum(dim=self_seq_dim) > 0).int().sum()
