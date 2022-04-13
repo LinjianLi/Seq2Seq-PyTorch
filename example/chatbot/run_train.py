@@ -121,7 +121,7 @@ if args.checkpoint is not None:
 
 # Run training iterations
 logger.info("Start training.")
-trainer.run(grad_clip=config["grad_clip"], progress_indicator=config["progress_indicator"])
+trainer.run(grad_clip=config["grad_clip"])
 logger.info("Finish training.")
 
 logger.info("Some examples from the final model:\n")

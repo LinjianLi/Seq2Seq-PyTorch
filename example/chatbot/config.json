@@ -15,7 +15,6 @@
 "with_bridge": false,
 "tie_embedding": true,
 
-"progress_indicator": "tqdm",
 "max_length": 20,
 "batch_first": true,
 "train_batch_size": 16,
