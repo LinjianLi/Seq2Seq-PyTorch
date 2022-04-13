@@ -164,8 +164,20 @@ class Vocab:
         return indexes
 
     def sentence_from_indexes(self, indexes):
-        assert (len(indexes) > 0), ("The input is empty!")
-        assert isinstance(indexes, (list, tuple))
-        assert isinstance(indexes[0], int)
-        sentence = [self.get_word(index) for index in indexes]
-        return sentence
+        if not isinstance(indexes, [list, tuple]):
+            logger.error("Only support 1D/2D list or tuple!")
+            raise TypeError("Only support 1D/2D list or tuple!")
+        if len(indexes) == 0:
+            logger.warning("The length is zero!")
+            return []
+        if isinstance(indexes[0], int):
+            sentence = [self.get_word(index) for index in indexes]
+            return sentence
+        elif isinstance(indexes[0], [list, tuple]):
+            sentences = [
+                self.sentence_from_indexes(index_sequence) for index_sequence in indexes
+            ]
+            return sentences
+        else:
+            logger.error("Only support 1D/2D list or tuple!")
+            raise TypeError("Only support 1D/2D list or tuple!")
