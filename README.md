@@ -31,10 +31,13 @@ See [example](./example/translation-French_to_English)
 
 - `Trainer` supports [gradient accumulation](https://ai.stackexchange.com/questions/21972/what-is-the-relationship-between-gradient-accumulation-and-batch-size) which enables larger (equivalent) batch size although with limited memory.
 - Supports beam search by reusing the code from the [Transformers library of the HuggingFace Inc. team](https://github.com/huggingface/transformers).
-- Attention mechanism. I use the [Luong attention mechanism](https://arxiv.org/abs/1508.04025) instead of the [Bahdanau attention mechanism](https://arxiv.org/abs/1409.0473). When computing the attention at time step `t`, the former uses the hidden state from the time step `t` while the latter uses the hidden state from the time step `t-1`.
+- Attention mechanism.
+  - I use the [Luong attention mechanism](https://arxiv.org/abs/1508.04025) instead of the [Bahdanau attention mechanism](https://arxiv.org/abs/1409.0473). When computing the attention at time step `t`, the former uses the hidden state from the time step `t` while the latter uses the hidden state from the time step `t-1`.
+  - Support multi-head attention.
 
 ## To Do
 
 - Fix `trainer`. When saving training checkpoint, `trainer` does not save the best epoch model. So, if resume training, the saved best epoch after finishing is not actually the best epoch of the whole training stage, but the best epoch after the checkpoint. (Not sure if trainer should save the best-so-far model at every checkpoint, which will make the checkpoint file large.)
 - (Not sure if it is necessary.) Support regression.
 - Add some utility scripts, such as `create_vocab.py`, `inference.py`, and so on.
+- Self-Attention

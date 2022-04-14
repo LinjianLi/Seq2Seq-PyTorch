@@ -50,6 +50,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
             num_layers: int = 1,
             bidirectional: bool = False,
             attn_mode=None,
+            attn_num_heads=-1,
             attn_hidden_size=None,
             with_bridge: bool = False,
             tie_embedding: bool = False,
@@ -74,6 +75,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.attn_mode = attn_mode
+        self.attn_num_heads = attn_num_heads
         self.attn_hidden_size = attn_hidden_size
         self.with_bridge = with_bridge
         self.tie_embedding = tie_embedding
@@ -135,6 +137,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
             embedder=dec_embedder,
             num_layers=self.num_layers,
             attn_mode=self.attn_mode,
+            attn_num_heads=self.attn_num_heads,
             attn_hidden_size=self.attn_hidden_size,
             rnn_cell=self.rnn_cell,
             dropout=self.dropout,
@@ -243,9 +246,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
 
             if decoder_output_tokens[0] == self.end_token:
                 logger.warning("The first token of the output tokens is the <EOS> token!")
-                logger.warning(
-                    "The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs),
-                                                                                              str(dec_inputs)))
+                logger.warning("The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs), str(dec_inputs)))
 
             # Discard the content after the first end_token.
             for i in range(len(decoder_output_tokens)):
@@ -336,9 +337,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
 
             if sequences[0] == self.end_token:
                 logger.warning("The first token of the output tokens is the <EOS> token!")
-                logger.warning(
-                    "The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs),
-                                                                                              str(dec_inputs)))
+                logger.warning("The related variables:\n\tEncoder inputs:{}\n\tDecoder inputs:{}".format(str(enc_inputs), str(dec_inputs)))
 
             # Discard the content after the first end_token.
             # `max_length - 1` because of the removal of the start token.

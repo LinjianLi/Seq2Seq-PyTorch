@@ -22,6 +22,7 @@ class DecoderRNN(nn.Module):
             rnn_cell: str = 'gru',
             batch_first: bool = True,
             attn_mode: str = None,
+            attn_num_heads=-1,
             attn_hidden_size: int = -1,
             use_gpu: bool = False
     ):
@@ -43,9 +44,11 @@ class DecoderRNN(nn.Module):
         self.batch_first = batch_first
 
         self.attn_mode = attn_mode
+        self.attn_num_heads = attn_num_heads
         self.attn_hidden_size = attn_hidden_size
         if isinstance(self.attn_mode, str) and self.attn_mode.lower() == "none":
             self.attn_mode = None
+            self.attn_num_heads = -1
             self.attn_hidden_size = -1
 
         self.embedding_dropout_rate = embedding_dropout
@@ -73,7 +76,8 @@ class DecoderRNN(nn.Module):
                 key_size=self.hidden_size,
                 value_size=self.hidden_size,
                 hidden_size=self.attn_hidden_size,
-                mode=self.attn_mode
+                mode=self.attn_mode,
+                attn_num_heads=self.attn_num_heads
             )
             self.linear_concat = nn.Linear(
                 self.hidden_size * 2,

@@ -8,8 +8,10 @@ logger = logging.getLogger(__name__)
 class Attention(nn.Module):
     """
     Attention
-    Based on [Attention Is All You Need]
+    Based on [Attention Is All You Need](https://arxiv.org/pdf/1706.03762.pdf)
     The inputs are always batch first!
+
+    Note: This module is for cross-attention instead of self-attention.
 
         Input:
             query: Tensor(batch_size, query_length, query_size)
@@ -28,6 +30,7 @@ class Attention(nn.Module):
             key_size=None,
             value_size=None,
             hidden_size=None,
+            num_heads: int = 1,
             mode: str = "scaled-dot",
             return_attn_only: bool = False,
             project: bool = False
@@ -35,25 +38,38 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
 
         mode = mode.lower()
-        assert (
-                mode in (
+        supported_attention_modes = (
             "dot",
             "scaled-dot",
             "general",
             "concat",
             "mlp",
             "additive",
+            "multi-head",
             "default",
             None
         )
-        ), (
-            "Unsupported attention mode: {mode}"
-        )
+        if mode not in supported_attention_modes:
+            s = "Supported attention modes: {}\nGet argument: {}".format(
+                str(supported_attention_modes), mode
+            )
+            logger.error(s)
+            raise NotImplementedError(s)
 
         self.query_size = query_size
         self.key_size = key_size or query_size
         self.value_size = value_size or query_size
         self.hidden_size = hidden_size or query_size
+        self.num_heads = num_heads
+        if (self.hidden_size % self.num_heads != 0):
+            error_message = (
+                "The number of hidden size should be  a multiple of the number"
+                " of attention heads. Input arguments are hidden_size={hs}, num_heads={nh}."
+                .format(hs=self.hidden_size, nh=self.num_heads)
+            )
+            logger.error(error_message)
+            raise AssertionError(error_message)
+        self.hidden_size_per_head = self.hidden_size / self.num_heads
         self.mode = "scaled-dot" if mode in ("default", None) else mode
         self.return_attn_only = return_attn_only
         self.project = project
@@ -88,6 +104,17 @@ class Attention(nn.Module):
                 self.key_size, self.hidden_size, bias=False)
             self.v = nn.Linear(self.hidden_size, 1, bias=False)
 
+        if self.num_heads > 1 and self.mode == "multi-head":
+            # There is no need to create a weight matrix for each head of Q/K/V.
+            # Only one weight matrix for all heads is enough.
+            # In implementation, the multi-head attention is done by manipulating
+            # the dimension of the tensor. And that is why the hidden size should
+            # be a multiple of the number of attention heads.
+            self.project_q = nn.Linear(self.query_size, self.hidden_size)
+            self.project_k = nn.Linear(self.key_size, self.hidden_size)
+            self.project_v = nn.Linear(self.value_size, self.hidden_size)
+            self.project_out = nn.Linear(self.hidden_size, self.hidden_size)
+
         if self.project:
             self.linear_project = nn.Sequential(
                 nn.Linear(in_features=self.hidden_size + self.value_size,
@@ -100,6 +127,8 @@ class Attention(nn.Module):
             .format(self.query_size, self.key_size, self.value_size)
         if self.mode in ("concat", "mlp", "additive"):
             main_string += ", hidden_size={}".format(self.hidden_size)
+        if self.num_heads > 1:
+            main_string += ", num_heads={}".format(self.num_heads)
         main_string += ", mode='{}'".format(self.mode)
         if self.project:
             main_string += ", project=True"
@@ -110,6 +139,11 @@ class Attention(nn.Module):
         if (not self.return_attn_only) and (values is None):
             # I am not sure if I should use `.clone()` or not.
             values = keys
+
+        batch_size = query.size(0)  # Should be batch_first.
+        q_length = query.size(1)
+        k_length = keys.size(1)
+        v_length = values.size(1)
 
         if self.mode == "dot" or self.mode == "scaled-dot":
             if query.size(-1) != keys.size(-1):
@@ -164,15 +198,53 @@ class Attention(nn.Module):
                 )
             ).squeeze(-1)  # (batch_size, query_length, key_length)
 
+        elif self.mode == "multi-head":
+            # In implementation, the multi-head attention is done by manipulating
+            # the dimension of the tensor.
+            query = self.project_q(query)
+            keys = self.project_k(keys)
+            values = self.project_v(values)
+
+            # Split the hidden size to size per head.
+            query = query.view(batch_size, q_length, self.num_heads, self.hidden_size_per_head)
+            keys = keys.view(batch_size, k_length, self.num_heads, self.hidden_size_per_head)
+            values = values.view(batch_size, v_length, self.num_heads, self.hidden_size_per_head)
+
+            # Transpose the matrix to avoid different heads from interacting with
+            # each other in the following matrix multiplication process.
+            query = query.transpose(1, 2)
+            keys = keys.transpose(1, 2)
+            values = values.transpose(1, 2)
+
+            query = query.view(batch_size * self.num_heads, q_length, self.hidden_size_per_head)
+            keys = keys.view(batch_size * self.num_heads, k_length, self.hidden_size_per_head)
+            values = values.view(batch_size * self.num_heads, v_length, self.hidden_size_per_head)
+
+            attn = torch.bmm(query, keys.transpose(1, 2))
+            # Scale by sqrt(hidden size) as described in the paper "Attention Is All You Need".
+            attn /= torch.sqrt(torch.tensor(keys.size(-1), dtype=torch.float))
+
         else:
-            raise NotImplementedError("Attention mode not supported!")
+            raise NotImplementedError("Attention mode \"{}\" not supported!".format(self.mode))
 
         if mask is not None:
-            # (batch_size, query_length, key_length)
+            # Shape:
+            # (batch_size, key_length)
+            # -> (batch_size, 1, key_length)
+            # -> (batch_size, query_length, key_length)
             mask = mask.unsqueeze(1).repeat(1, query.size(1), 1)
+            if self.mode == "multi-head":
+                # Shape:
+                # (batch_size, query_length, key_length)
+                # -> (batch_size, 1, query_length, key_length)
+                # -> (batch_size, num_heads, query_length, key_length)
+                # -> (batch_size * num_heads, query_length, key_length)
+                mask = mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)
+                mask = mask.view(batch_size * self.num_heads, mask.size(-2), mask.size(-1))
             attn.masked_fill_(mask, -float("inf"))
 
         # (batch_size, query_length, key_length)
+        # or (batch_size * num_heads, query_length, key_length)
         weights = self.softmax(attn)
 
         if mask is not None:
@@ -187,10 +259,33 @@ class Attention(nn.Module):
             return weights
         else:
             # (batch_size, query_length, value_size)
+            # or (batch_size * num_heads, query_length, hidden_size_per_head)
             weighted_sum_values = torch.bmm(weights, values)
+
+            if self.mode == "multi-head":
+                # Shape
+                # (batch_size * num_heads, query_length, hidden_size_per_head)
+                # -> (batch_size, num_heads, query_length, hidden_size_per_head)
+                weighted_sum_values = weighted_sum_values.view(
+                    batch_size,
+                    self.num_heads,
+                    weighted_sum_values.size(-2),
+                    weighted_sum_values.size(-1)
+                )
+                # -> (batch_size, query_length, num_heads, hidden_size_per_head)
+                weighted_sum_values = weighted_sum_values.transpose(1, 2)
+                # (batch_size, query_length, num_heads * hidden_size_per_head)
+                # = (batch_size, query_length, value_size)
+                weighted_sum_values = weighted_sum_values.view(
+                    batch_size,
+                    weighted_sum_values.size(1),
+                    -1
+                )
+                weighted_sum_values = self.project_out(weighted_sum_values)
 
             if self.project:
                 project_output = self.linear_project(
+                    # TODO: Why concat with query? Do not know. Fix it.
                     torch.cat([weighted_sum_values, query], dim=-1))
                 return project_output, weights
             else:
