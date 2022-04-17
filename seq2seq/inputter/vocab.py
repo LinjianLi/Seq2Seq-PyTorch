@@ -2,6 +2,7 @@ import os
 import json
 import re
 import logging
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -181,3 +182,58 @@ class Vocab:
         else:
             logger.error("Only support 1D/2D list or tuple!")
             raise TypeError("Only support 1D/2D list or tuple!")
+
+    def extract_pretrain_embedding(self, embedding_file: str, num_dim: int) -> List[List]:
+        """
+        Extract pretrained word embedding and merge with vocab embedding.
+        - If a word is in both the vocab and the pretrained embedding,
+            the embedding will be initialized with the pretrained word embedding.
+        - If a word is in the vocab but not in the pretrained embedding,
+            the embedding will be initialized with all zeros.
+            - The initialization of these words be done by the user.
+                Different users may want different kinds of initialization.
+                User can easily find these words by checking whether the embedding
+                are all zeros.
+        - If a word is not in the vocab but in the pretrained embedding,
+            it will be ignored.
+
+        Input: string of embedding file, number of dimension of embedding
+
+        Return: 2-dimensional list of size (num_words, num_dim)
+        """
+
+        # `num_dim` dimensional embeddings
+        # initialized with all zeros for all tokens in the vocab
+        embeddings = [
+            [0 for dim in range(num_dim)] for tok in range(len(self))
+        ]
+        # Load pretrain word embedding.
+        with open(embedding_file, "r", encoding="utf-8") as f:
+            dict_pretrain_word_vector = {}
+            for line in f:
+                line = line.strip().split()
+                # The word in the pretrained embedding may contain white space.
+                # Thus, choose the last `num_dim` elements as the embeddings.
+                word, embed = line[0:-num_dim], line[-num_dim:]
+                word = " ".join(word)
+                embed = list(map(float, embed))
+                dict_pretrain_word_vector[word] = embed
+        # Merge pretrain word embedding with my vocab.
+        count_match = 0
+        for word in dict_pretrain_word_vector.keys():
+            if word in self.word2index:
+                count_match += 1
+                embeddings[self.get_index(word)] = dict_pretrain_word_vector.get(word)
+        logger.info(
+            "Finish loading pretrain embedding."
+            "Pretrain embedding size: {}\n"
+            "Vocab size: {}\n"
+            "Number of match: {}\n"
+            "Coverage: {}".format(
+                len(dict_pretrain_word_vector),
+                len(self),
+                count_match, 
+                count_match/len(self)
+            )
+        )
+        return embeddings
