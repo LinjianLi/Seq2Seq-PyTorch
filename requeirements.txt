@@ -1,6 +1,5 @@
 torch
 matplotlib
-prettytable
 
 tqdm
 scikit-learn

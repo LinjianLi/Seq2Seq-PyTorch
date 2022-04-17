@@ -11,7 +11,7 @@
 import os
 import torch
 import torch.nn as nn
-from prettytable import PrettyTable
+# from prettytable import PrettyTable
 
 
 class BaseModel(nn.Module):
@@ -28,16 +28,17 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def __repr__(self):
-        table = PrettyTable(["Modules", "Parameters"])
+        # table = PrettyTable(["Modules", "Parameters"])
         total_params = 0
         for name, parameter in self.named_parameters():
             if not parameter.requires_grad:
                 continue
             num_param = parameter.numel()
-            table.add_row([name, num_param])
+            # table.add_row([name, num_param])
             total_params += num_param
         main_string = '\n' + super(BaseModel, self).__repr__() + '\n'
-        main_string += table.get_string() + '\n' + "Total Trainable Params: {}".format(total_params)
+        # main_string += table.get_string() + '\n'
+        main_string += "Total Trainable Params: {}".format(total_params)
         return main_string
 
     def save(self, filename):
