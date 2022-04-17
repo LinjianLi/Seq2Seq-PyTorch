@@ -100,8 +100,10 @@ class Vocab:
     def get_word(self, index):
         return self.index2word.get(index, self.index2word[UNK_token])
 
-    # Remove words below a certain count threshold
     def trim(self, min_count=10):
+        """
+        Remove words whose frequency are below a certain count threshold.
+        """
         if self.trimmed:
             return
         self.trimmed = True
@@ -112,7 +114,8 @@ class Vocab:
             if v >= min_count:
                 keep_words.append((k, v))
 
-        logger.info('keep_words {} / {} = {:.4f}'.format(
+        logger.info('keep words with minimum frequency {}: {} / {} = {:.4f}'.format(
+                        min_count,
                         len(keep_words),
                         len(self.word2index),
                         len(keep_words) / len(self.word2index)))
@@ -129,13 +132,17 @@ class Vocab:
             self.add_word(word)
             self.word2count[word] = count
 
-    # Keep the most frequent k words.
     def keep_most_frequent_k(self, k=10000):
+        """
+        Keep the most frequent k words.
+        Note that special words (<PAD>, <SOS>, <EOS>, <UNK>) are not considered.
+        Thus, the result vocab will be of size (k+4).
+        """
         sorted_word_count = list(self.word2count.items())
         sorted_word_count.sort(key=lambda w_c: w_c[1], reverse=True)
         sorted_word_count = sorted_word_count[0:k]
 
-        logger.info('keep_words {} / {} = {:.4f}'.format(
+        logger.info('keep most frequent words: {} / {} = {:.4f}'.format(
                         len(sorted_word_count),
                         len(self.word2index),
                         len(sorted_word_count) / len(self.word2index)))
