@@ -14,6 +14,7 @@ class SimpleRNN(nn.Module):
             num_layers: int = 1,
             dropout: float = 0,
             embedder=None,
+            embedding_dropout: float = 0,
             rnn_cell: str = 'gru',
             bidirectional: bool = False,
             batch_first: bool = True,
@@ -28,6 +29,9 @@ class SimpleRNN(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout = dropout
+        self.embedding_dropout_rate = embedding_dropout
+        if self.embedding_dropout_rate != 0:
+            self.embedding_dropout = nn.Dropout(self.embedding_dropout_rate)
         self.bidirectional = bidirectional
         self.batch_first = batch_first
 
@@ -91,6 +95,8 @@ class SimpleRNN(nn.Module):
         if self.embedder is not None:
             # Embedding.
             inputs = self.embedder(inputs)
+            if self.embedding_dropout_rate != 0:
+                inputs = self.embedding_dropout(inputs)
         else:
             inputs = inputs
 

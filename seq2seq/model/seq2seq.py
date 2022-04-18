@@ -54,6 +54,9 @@ class Seq2Seq(BaseModel, GenerationMixin):
             attn_hidden_size=None,
             with_bridge: bool = False,
             tie_embedding: bool = False,
+            pretrained_embedding_src: list = None,
+            pretrained_embedding_tgt: list = None,
+            embedding_dropout: float = 0,
             dropout: float = 0.0,
             rnn_cell: str = 'gru',
             teacher_forcing_ratio: float = 0.0,
@@ -80,6 +83,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
         self.with_bridge = with_bridge
         self.tie_embedding = tie_embedding
         self.dropout = dropout
+        self.embedding_dropout = embedding_dropout
         self.rnn_cell = rnn_cell
         self.teacher_forcing_ratio = teacher_forcing_ratio
 
@@ -101,11 +105,14 @@ class Seq2Seq(BaseModel, GenerationMixin):
             embedding_dim=self.embed_size,
             padding_idx=self.padding_idx
         )
+        if pretrained_embedding_src is not None:
+            enc_embedder.load_embeddings(pretrained_embedding_src)
 
         self.encoder = SimpleRNN(
             input_size=self.embed_size,
             hidden_size=self.hidden_size,
             embedder=enc_embedder,
+            embedding_dropout=self.embedding_dropout,
             num_layers=self.num_layers,
             bidirectional=self.bidirectional,
             dropout=self.dropout,
@@ -123,12 +130,21 @@ class Seq2Seq(BaseModel, GenerationMixin):
         if self.tie_embedding:
             assert self.src_vocab_size == self.tgt_vocab_size
             dec_embedder = enc_embedder
+            if (pretrained_embedding_src is not None) and (pretrained_embedding_tgt is not None):
+                logger.warning(
+                    "Setting `tie_embedding=True` while "
+                    "`pretrained_embedding_src` is not `None` and "
+                    "`pretrained_embedding_tgt` is not `None`. "
+                    "The decoder embedding will be set to the same as the encoder embedding."
+                )
         else:
             dec_embedder = Embedder(
                 num_embeddings=self.tgt_vocab_size,
                 embedding_dim=self.embed_size,
                 padding_idx=self.padding_idx
             )
+            if pretrained_embedding_tgt is not None:
+                dec_embedder.load_embeddings(pretrained_embedding_tgt)
 
         self.decoder = DecoderRNN(
             input_size=self.embed_size,
@@ -141,6 +157,7 @@ class Seq2Seq(BaseModel, GenerationMixin):
             attn_hidden_size=self.attn_hidden_size,
             rnn_cell=self.rnn_cell,
             dropout=self.dropout,
+            embedding_dropout=self.embedding_dropout,
             batch_first=self.batch_first,
             use_gpu=self.use_gpu
         )
