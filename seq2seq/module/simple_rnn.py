@@ -82,6 +82,9 @@ class SimpleRNN(nn.Module):
             "outputs": Tensor(batch, seq_len, num_directions * hidden_size)
             "last_hidden_state": Tensor(num_layers * num_directions, batch_size, hidden_size)
         }
+
+        If the cell type is LSTM, the last hidden state is a tuple
+        of two tensors (hidden_state, cell_state).
         """
         batch_dim = 0 if self.batch_first else 1
 
@@ -102,7 +105,14 @@ class SimpleRNN(nn.Module):
                 batch_first=self.batch_first)
             if hidden is not None:
                 # Hidden states are always not batch-first.
-                hidden = hidden.index_select(dim=1, index=indices)
+                if isinstance(hidden, tuple):
+                    # LSTM hidden: (hidden, cell_state)
+                    hidden = (
+                        hidden[0].index_select(dim=1, index=indices),
+                        hidden[1].index_select(dim=1, index=indices)
+                    )
+                else:
+                    hidden = hidden.index_select(dim=1, index=indices)
 
         # Forward pass through RNN.
         # output of shape (seq_len, batch, num_directions * hidden_size)
@@ -120,7 +130,14 @@ class SimpleRNN(nn.Module):
             _, inv_indices = indices.sort()
             outputs = outputs.index_select(batch_dim, inv_indices)
             # hidden is not batch first, so dim=1.
-            hidden = hidden.index_select(dim=1, index=inv_indices)
+            if isinstance(hidden, tuple):
+                # LSTM hidden: (hidden, cell_state)
+                hidden = (
+                    hidden[0].index_select(dim=1, index=inv_indices),
+                    hidden[1].index_select(dim=1, index=inv_indices)
+                )
+            else:
+                hidden = hidden.index_select(dim=1, index=inv_indices)
 
         # Return output and final hidden state.
         output_dict = {"outputs": outputs, "last_hidden_state": hidden}
@@ -128,11 +145,24 @@ class SimpleRNN(nn.Module):
 
     def _bridge_bidirectional_hidden(self, hidden):
         """
-        (Code from Baidu Inc)
+        (Code from Baidu Inc. and modified by Linjian Li)
         The bidirectional hidden is of shape (num_layers * num_directions, batch_size, hidden_size).
         This function is to convert it to shape (num_layers, batch_size, num_directions * hidden_size).
         """
+        is_lstm = isinstance(hidden, tuple)
+        if is_lstm:
+            # LSTM hidden: (hidden, cell_state)
+            hidden, cell_state = hidden[0], hidden[1]
+
         num_layers = hidden.size(0) // 2
         _, batch_size, hidden_size = hidden.size()
-        return hidden.view(num_layers, 2, batch_size, hidden_size) \
+
+        hidden = hidden.view(num_layers, 2, batch_size, hidden_size) \
             .transpose(1, 2).contiguous().view(num_layers, batch_size, hidden_size * 2)
+
+        if is_lstm:
+            cell_state = cell_state.view(num_layers, 2, batch_size, hidden_size) \
+                .transpose(1, 2).contiguous().view(num_layers, batch_size, hidden_size * 2)
+            hidden = (hidden, cell_state)
+
+        return hidden

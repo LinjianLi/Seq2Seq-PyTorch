@@ -154,6 +154,9 @@ class Seq2Seq(BaseModel, GenerationMixin):
         enc_inputs, enc_input_lengths = inputs  # inputs["inputs"], inputs["lengths"]
         enc_output_dict = self.encoder(enc_inputs, enc_input_lengths, hidden)
         enc_outputs, enc_hidden = enc_output_dict["outputs"], enc_output_dict["last_hidden_state"]
+        if isinstance(enc_hidden, tuple):
+            # LSTM hidden: (hidden, cell_state)
+            enc_hidden, enc_last_cell = enc_hidden
         if self.with_bridge:
             enc_hidden = self.bridge(enc_hidden)
         return enc_outputs, enc_hidden
