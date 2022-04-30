@@ -51,7 +51,8 @@ class Trainer(object):
             plot_loss_group_by="epoch",
             plot_loss_group_by_every=1,
             evaluate_before_train=True,
-            use_gpu=False
+            use_gpu=False,
+            config={},
     ):
         super(Trainer, self).__init__()
         self.model = model
@@ -97,6 +98,12 @@ class Trainer(object):
             raise ImportError("(self.use_gpu == True) but (torch.cuda.is_available() == False)")
 
         self.now_epoch = -1
+
+        self.config = config
+        config_save_path = os.path.join(self.save_path, 'config.json')
+        if not os.path.exists(config_save_path):
+            with open(config_save_path, mode='w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=2)
 
         self.train_loss_record = []
         self.valid_loss_record = []
