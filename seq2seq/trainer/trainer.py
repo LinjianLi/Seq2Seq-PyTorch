@@ -202,7 +202,7 @@ class Trainer(object):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             joint_save_path = os.path.join(self.save_path,
-                                           'best_epoch_{}-model_only.pt'.format(save_dict['epoch']))
+                                           'best-model_only.pt')
             torch.save(save_dict, joint_save_path)
 
     def save(self):
