@@ -111,7 +111,8 @@ trainer = Trainer(
     plot_loss_group_by=config["plot_loss_group_by"],
     plot_loss_group_by_every=config["plot_loss_group_by_every"],
     evaluate_before_train=config["evaluate_before_train"],
-    use_gpu=use_gpu
+    use_gpu=use_gpu,
+    config=config,
 )
 
 if args.checkpoint is not None:
