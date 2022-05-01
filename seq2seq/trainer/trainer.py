@@ -81,7 +81,12 @@ class Trainer(object):
         self.scheduler = scheduler
         self.early_stop_num = early_stop_num
         self.save_best_model = save_best_model
+
         self.save_path = save_path
+        if self.save_path is not None:
+            if not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
+
         self.save_every_epoch = save_every_epoch
         self.plot_loss_group_by = plot_loss_group_by.lower()  # option: "epoch" or "update"
         if self.plot_loss_group_by.lower() not in ("epoch", "update"):
